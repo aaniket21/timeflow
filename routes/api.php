@@ -23,9 +23,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/analytics/daily', [AnalyticsController::class, 'daily']);
     Route::get('/analytics/weekly', [AnalyticsController::class, 'weekly']);
     Route::get('/analytics/monthly', [AnalyticsController::class, 'monthly']);
+    Route::get('/analytics/heatmap', [AnalyticsController::class, 'heatmap']);
     Route::get('/analytics/insights', [AnalyticsController::class, 'insights']);
     Route::get('/challenges/today', [ChallengeController::class, 'today']);
     Route::get('/projects', [ProjectController::class, 'index']);
+    Route::get('/projects/summary', [ProjectController::class, 'summary']);
     Route::post('/projects', [ProjectController::class, 'store']);
     Route::put('/projects/{project}', [ProjectController::class, 'update']);
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
@@ -34,7 +36,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/categories/{category}', [CategoryController::class, 'update']);
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
     Route::get('/goals', [GoalController::class, 'index']);
+    Route::get('/goals/summary', [GoalController::class, 'summary']);
     Route::post('/goals', [GoalController::class, 'store']);
+    Route::get('/habits/week', [GoalController::class, 'weekHabits']);
+    Route::get('/habits/today', [GoalController::class, 'todayHabits']);
     Route::post('/habits/{goal}/log', [GoalController::class, 'logHabit']);
     Route::get('/exams', [ExamController::class, 'index']);
     Route::post('/exams', [ExamController::class, 'store']);
@@ -51,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/gamification/leaderboard', [GamificationController::class, 'leaderboard']);
     Route::put('/gamification/leaderboard-opt-in', [GamificationController::class, 'updateLeaderboardOptIn']);
     Route::get('/sessions/active', [SessionController::class, 'active']);
+    Route::get('/sessions/recent', [SessionController::class, 'recent']);
     Route::post('/sessions/start', [SessionController::class, 'start']);
     Route::post('/sessions', [SessionController::class, 'store']);
     Route::put('/sessions/{session}', [SessionController::class, 'update']);

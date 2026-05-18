@@ -4,35 +4,110 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ReportController;
 
-Route::get('/', function () {
-    return Inertia::render('Dashboard', [
-        'navigation' => [
+if (! function_exists('buildNavigation')) {
+    function buildNavigation(string $activeLabel): array
+    {
+        $isActive = fn (string $label): bool => $label === $activeLabel;
+
+        return [
             'sections' => [
                 [
                     'label' => 'Main',
                     'items' => [
-                        ['label' => 'Dashboard', 'icon' => 'ti-layout-dashboard', 'active' => true],
-                        ['label' => 'Timer', 'icon' => 'ti-player-play', 'active' => false],
-                        ['label' => 'Analytics', 'icon' => 'ti-chart-bar', 'active' => false],
-                        ['label' => 'Projects', 'icon' => 'ti-folder', 'active' => false, 'count' => 4],
+                        ['label' => 'Dashboard', 'icon' => 'ti-layout-dashboard', 'active' => $isActive('Dashboard')],
+                        ['label' => 'Timer', 'icon' => 'ti-player-play', 'active' => $isActive('Timer')],
+                        ['label' => 'Analytics', 'icon' => 'ti-chart-bar', 'active' => $isActive('Analytics')],
+                        ['label' => 'Projects', 'icon' => 'ti-folder', 'active' => $isActive('Projects'), 'count' => 4],
                     ],
                 ],
                 [
                     'label' => 'Grow',
                     'items' => [
-                        ['label' => 'Achievements', 'icon' => 'ti-trophy', 'active' => false],
-                        ['label' => 'Goals', 'icon' => 'ti-target', 'active' => false],
-                        ['label' => 'Leaderboard', 'icon' => 'ti-podium', 'active' => false],
+                        ['label' => 'Achievements', 'icon' => 'ti-trophy', 'active' => $isActive('Achievements')],
+                        ['label' => 'Goals', 'icon' => 'ti-target', 'active' => $isActive('Goals')],
+                        ['label' => 'Leaderboard', 'icon' => 'ti-podium', 'active' => $isActive('Leaderboard')],
                     ],
                 ],
                 [
                     'label' => 'Export',
                     'items' => [
-                        ['label' => 'Reports', 'icon' => 'ti-file-analytics', 'active' => false],
+                        ['label' => 'Reports', 'icon' => 'ti-file-analytics', 'active' => $isActive('Reports')],
                     ],
                 ],
             ],
-        ],
+        ];
+    }
+}
+
+Route::get('/', function () {
+    return Inertia::render('Dashboard', [
+        'navigation' => buildNavigation('Dashboard'),
+    ]);
+});
+
+Route::get('/timer', function () {
+    return Inertia::render('Timer', [
+        'navigation' => buildNavigation('Timer'),
+    ]);
+});
+
+Route::get('/analytics', function () {
+    return Inertia::render('Analytics', [
+        'navigation' => buildNavigation('Analytics'),
+    ]);
+});
+
+Route::get('/projects', function () {
+    return Inertia::render('Projects', [
+        'navigation' => buildNavigation('Projects'),
+    ]);
+});
+
+Route::get('/timetable', function () {
+    return Inertia::render('Timetable', [
+        'navigation' => buildNavigation('Projects'),
+    ]);
+});
+
+Route::get('/goals', function () {
+    return Inertia::render('Goals', [
+        'navigation' => buildNavigation('Goals'),
+    ]);
+});
+
+Route::get('/habits', function () {
+    return Inertia::render('Habits', [
+        'navigation' => buildNavigation('Goals'),
+    ]);
+});
+
+Route::get('/plans', function () {
+    return Inertia::render('Plans', [
+        'navigation' => buildNavigation('Goals'),
+    ]);
+});
+
+Route::get('/reports', function () {
+    return Inertia::render('Reports', [
+        'navigation' => buildNavigation('Reports'),
+    ]);
+});
+
+Route::get('/settings', function () {
+    return Inertia::render('Settings', [
+        'navigation' => buildNavigation('Settings'),
+    ]);
+});
+
+Route::get('/achievements', function () {
+    return Inertia::render('Achievements', [
+        'navigation' => buildNavigation('Achievements'),
+    ]);
+});
+
+Route::get('/leaderboard', function () {
+    return Inertia::render('Leaderboard', [
+        'navigation' => buildNavigation('Leaderboard'),
     ]);
 });
 
@@ -40,23 +115,29 @@ Route::get('/focus', function () {
     return Inertia::render('FocusMode');
 });
 
+Route::get('/login', function () {
+    return Inertia::render('Auth/Login');
+});
+
+Route::get('/register', function () {
+    return Inertia::render('Auth/Register');
+});
+
+Route::get('/forgot-password', function () {
+    return Inertia::render('Auth/ForgotPassword');
+});
+
+Route::get('/reset-password', function () {
+    return Inertia::render('Auth/ResetPassword');
+});
+
+Route::get('/onboarding', function () {
+    return Inertia::render('Onboarding');
+});
+
 Route::get('/gamification/profile', function () {
     return Inertia::render('Gamification/Profile', [
-        'profile' => [
-            'xp_total' => 1240,
-            'level' => 4,
-            'level_title' => 'Dedicated',
-            'next_level_xp' => 1600,
-            'streak_current' => 14,
-            'streak_longest' => 21,
-            'badge_count' => 12,
-            'last_active_date' => now()->toDateString(),
-        ],
-        'celebration' => [
-            'title' => 'Level up!',
-            'detail' => 'You are 360 XP away from Focused 5.',
-            'action' => 'Keep the streak alive',
-        ],
+        'navigation' => buildNavigation('Achievements'),
     ]);
 });
 

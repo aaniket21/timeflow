@@ -1,665 +1,1117 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import axios from 'axios';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import AppShell from '../Layouts/AppShell.vue';
 
-const isDark = ref(true);
+const props = defineProps({
+  navigation: {
+    type: Object,
+    default: () => ({ sections: [] }),
+  },
+});
 
-const toggleMode = () => {
-    isDark.value = !isDark.value;
+function buildEmptyHeatmap() {
+  return Array.from({ length: 14 }, () => Array.from({ length: 6 }, () => 0));
+}
+
+const userProfile = ref({ name: '', daily_goal_hours: 6 });
+const dailyGoalHours = ref(6);
+const todayStats = ref({ total_seconds: 0, focus_sessions: 0, avg_session_seconds: 0, pomodoro_count: 0 });
+const weekStats = ref({ total_seconds: 0, goal_seconds: 0 });
+const streak = ref({ current: 0, longest: 0 });
+const xp = ref({ total: 0, level: 1, next_level: 200, title: 'Starter' });
+const challenge = ref({ title: 'No challenge today', progress: 0, target: 0, reward: 0 });
+const activeSession = ref(null);
+const timerSeconds = ref(0);
+const exams = ref([]);
+const timetableToday = ref([]);
+const dailyPlan = ref([]);
+const habitsToday = ref([]);
+const heatmap = ref(buildEmptyHeatmap());
+const recentSessions = ref([]);
+const insights = ref([]);
+
+const habitPalette = ['var(--tf-violet)', 'var(--tf-rose)', 'var(--tf-mint)', 'var(--tf-amber)', 'var(--tf-sky)', 'var(--tf-red)'];
+const levelTitles = {
+  1: 'Starter',
+  2: 'Focused',
+  3: 'Consistent',
+  4: 'Dedicated',
+  5: 'Relentless',
+  6: 'Flow State',
+  7: 'Deep Worker',
+  8: 'TimeFlow Master',
 };
 
-const sendPrompt = (promptText) => {
-    console.log("Prompt:", promptText);
+const greetingName = computed(() => (userProfile.value.name ? userProfile.value.name.split(' ')[0] : 'there'));
+const loggedHours = computed(() => (todayStats.value.total_seconds / 3600).toFixed(1));
+const goalPercent = computed(() => {
+  const goal = Math.max(Number(dailyGoalHours.value) || 1, 1);
+  const logged = Number(todayStats.value.total_seconds || 0) / 3600;
+  return Math.min(100, Math.round((logged / goal) * 100));
+});
+
+const formattedTimer = computed(() => {
+  const total = timerSeconds.value;
+  const h = String(Math.floor(total / 3600)).padStart(2, '0');
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+  const s = String(total % 60).padStart(2, '0');
+  return `${h}:${m}:${s}`;
+});
+
+const dateLabel = computed(() => new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+const hasActiveSession = computed(() => !!activeSession.value);
+const activeSessionLabel = computed(() => {
+  if (!activeSession.value) return 'No active session';
+  const label = activeSession.value.label || 'Session';
+  const category = activeSession.value.category ? ` - ${activeSession.value.category}` : '';
+  return `${label}${category}`;
+});
+
+const togglePlan = async (id) => {
+  const plan = dailyPlan.value.find((item) => item.id === id);
+  if (!plan) return;
+  plan.done = !plan.done;
+  await saveDailyPlan();
 };
 
-const timerText = ref('01:24:41');
-let s = 5081;
-let interval = null;
+const toggleHabit = async (id) => {
+  const habit = habitsToday.value.find((item) => item.id === id);
+  if (!habit) return;
+  const nextDone = !habit.done;
+  habit.done = nextDone;
+
+  try {
+    const response = await axios.post(`/api/habits/${habit.id}/log`, {
+      date: new Date().toISOString().slice(0, 10),
+      done: nextDone,
+    });
+
+    const logData = response.data?.data;
+    if (logData?.log) {
+      habit.done = logData.log.done;
+    }
+    if (typeof logData?.streak_current === 'number') {
+      habit.streak = logData.streak_current;
+    }
+  } catch (error) {
+    habit.done = !nextDone;
+    console.warn('Habit toggle failed', error);
+  }
+};
+
+let timerInterval = null;
+
+function formatDuration(seconds) {
+  const total = Math.max(0, Number(seconds) || 0);
+  const h = String(Math.floor(total / 3600)).padStart(2, '0');
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+function buildHeatmapGrid(days) {
+  if (!Array.isArray(days) || days.length === 0) {
+    return buildEmptyHeatmap();
+  }
+
+  const normalized = days.slice(0, 14);
+  while (normalized.length < 14) {
+    normalized.push({ level: 0 });
+  }
+
+  return normalized.map((day) => Array.from({ length: 6 }, () => Math.max(0, Math.min(4, Number(day.level) || 0))));
+}
+
+function startTimer(startedAt) {
+  if (!startedAt) return;
+  const startTime = new Date(startedAt).getTime();
+
+  const updateTimer = () => {
+    timerSeconds.value = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+  };
+
+  updateTimer();
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimer, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  timerSeconds.value = 0;
+}
+
+function setActiveSession(session) {
+  activeSession.value = session || null;
+  if (session?.started_at) {
+    startTimer(session.started_at);
+  } else {
+    stopTimer();
+  }
+}
+
+function resolveChallengeProgress(challengeData, completed) {
+  const target = Math.round(Number(challengeData?.target_value || 0));
+
+  if (!challengeData) {
+    return { progress: 0, target: 0, reward: 0, title: 'No challenge today' };
+  }
+
+  if (completed) {
+    return {
+      progress: target,
+      target,
+      reward: Number(challengeData.xp_reward || 0),
+      title: challengeData.title,
+    };
+  }
+
+  if (challengeData.type === 'hours_logged') {
+    const hours = Math.floor(Number(todayStats.value.total_seconds || 0) / 3600);
+    return {
+      progress: Math.min(target, hours),
+      target,
+      reward: Number(challengeData.xp_reward || 0),
+      title: challengeData.title,
+    };
+  }
+
+  if (challengeData.type === 'pomodoros') {
+    const pomodoros = Number(todayStats.value.pomodoro_count || 0);
+    return {
+      progress: Math.min(target, pomodoros),
+      target,
+      reward: Number(challengeData.xp_reward || 0),
+      title: challengeData.title,
+    };
+  }
+
+  return {
+    progress: 0,
+    target,
+    reward: Number(challengeData.xp_reward || 0),
+    title: challengeData.title,
+  };
+}
+
+async function saveDailyPlan() {
+  if (!dailyPlan.value.length) return;
+
+  try {
+    await axios.post('/api/daily-plans', {
+      date: new Date().toISOString().slice(0, 10),
+      tasks: dailyPlan.value.map((task) => ({ text: task.text, done: task.done })),
+    });
+  } catch (error) {
+    console.warn('Daily plan save failed', error);
+  }
+}
+
+async function loadDashboard() {
+  const [
+    userResult,
+    dailyResult,
+    weeklyResult,
+    heatmapResult,
+    examsResult,
+    timetableResult,
+    insightsResult,
+    challengeResult,
+    activeResult,
+    recentResult,
+    planResult,
+    habitsResult,
+    gamificationResult,
+    weeklyGoalResult,
+  ] = await Promise.allSettled([
+    axios.get('/api/user'),
+    axios.get('/api/analytics/daily'),
+    axios.get('/api/analytics/weekly'),
+    axios.get('/api/analytics/heatmap'),
+    axios.get('/api/exams'),
+    axios.get('/api/timetable/today'),
+    axios.get('/api/analytics/insights'),
+    axios.get('/api/challenges/today'),
+    axios.get('/api/sessions/active'),
+    axios.get('/api/sessions/recent'),
+    axios.get('/api/daily-plans/today'),
+    axios.get('/api/habits/today'),
+    axios.get('/api/gamification/profile'),
+    axios.get('/api/goals', { params: { type: 'weekly_hours', active: true } }),
+  ]);
+
+  const userPayload = userResult.status === 'fulfilled' ? userResult.value.data : null;
+  if (userPayload) {
+    userProfile.value = userPayload;
+    dailyGoalHours.value = Number(userPayload.daily_goal_hours ?? dailyGoalHours.value);
+  }
+
+  const dailyPayload = dailyResult.status === 'fulfilled' ? dailyResult.value.data?.data : null;
+  if (dailyPayload) {
+    todayStats.value = {
+      total_seconds: Number(dailyPayload.total_seconds || 0),
+      focus_sessions: Number(dailyPayload.focus_sessions || 0),
+      avg_session_seconds: Number(dailyPayload.avg_session_seconds || 0),
+      pomodoro_count: Number(dailyPayload.pomodoro_count || 0),
+    };
+  }
+
+  const weeklyPayload = weeklyResult.status === 'fulfilled' ? weeklyResult.value.data?.data : null;
+  const weeklyGoals = weeklyGoalResult.status === 'fulfilled' ? weeklyGoalResult.value.data?.data : null;
+  const weeklyGoalValue = Array.isArray(weeklyGoals) && weeklyGoals.length > 0
+    ? Number(weeklyGoals[0].target_value || 0)
+    : 0;
+
+  if (weeklyPayload) {
+    weekStats.value = {
+      total_seconds: Number(weeklyPayload.total_seconds || 0),
+      goal_seconds: weeklyGoalValue > 0
+        ? weeklyGoalValue * 3600
+        : Number(dailyGoalHours.value || 0) * 5 * 3600,
+    };
+  }
+
+  const heatmapPayload = heatmapResult.status === 'fulfilled' ? heatmapResult.value.data?.data : null;
+  heatmap.value = buildHeatmapGrid(heatmapPayload?.days || []);
+
+  const examsPayload = examsResult.status === 'fulfilled' ? examsResult.value.data?.data : null;
+  if (Array.isArray(examsPayload)) {
+    exams.value = examsPayload.map((exam) => {
+      const daysRemaining = Math.max(0, Math.ceil((new Date(exam.exam_date) - new Date()) / 86400000));
+      const urgency = daysRemaining <= 7 ? 'urgent' : daysRemaining <= 14 ? 'warn' : 'calm';
+      return {
+        id: exam.id,
+        subject: exam.subject,
+        days: daysRemaining,
+        urgency,
+      };
+    });
+  } else {
+    exams.value = [];
+  }
+
+  const timetablePayload = timetableResult.status === 'fulfilled' ? timetableResult.value.data?.data : null;
+  if (Array.isArray(timetablePayload)) {
+    timetableToday.value = timetablePayload.map((block) => ({
+      id: block.id,
+      title: block.title,
+      start_time: block.start_time,
+      type: block.type,
+      color: block.color,
+    }));
+  } else {
+    timetableToday.value = [];
+  }
+
+  const insightsPayload = insightsResult.status === 'fulfilled' ? insightsResult.value.data?.data : null;
+  insights.value = Array.isArray(insightsPayload) ? insightsPayload : [];
+
+  const challengePayload = challengeResult.status === 'fulfilled' ? challengeResult.value.data?.data : null;
+  if (challengePayload?.challenge) {
+    const progress = resolveChallengeProgress(challengePayload.challenge, challengePayload.completed);
+    challenge.value = {
+      title: progress.title,
+      progress: progress.progress,
+      target: progress.target,
+      reward: progress.reward,
+    };
+  } else {
+    challenge.value = { title: 'No challenge today', progress: 0, target: 0, reward: 0 };
+  }
+
+  const activePayload = activeResult.status === 'fulfilled' ? activeResult.value.data?.data : null;
+  setActiveSession(activePayload?.session || null);
+
+  const recentPayload = recentResult.status === 'fulfilled' ? recentResult.value.data?.data : null;
+  if (Array.isArray(recentPayload)) {
+    recentSessions.value = recentPayload.map((session) => ({
+      id: session.id,
+      name: session.label,
+      category: session.category,
+      duration: formatDuration(session.duration_seconds),
+      color: session.color,
+    }));
+  } else {
+    recentSessions.value = [];
+  }
+
+  const planPayload = planResult.status === 'fulfilled' ? planResult.value.data?.data : null;
+  const tasks = Array.isArray(planPayload?.tasks) ? planPayload.tasks : [];
+  dailyPlan.value = tasks.map((task, index) => ({
+    id: index + 1,
+    text: task.text,
+    done: !!task.done,
+  }));
+
+  const habitsPayload = habitsResult.status === 'fulfilled' ? habitsResult.value.data?.data : null;
+  if (Array.isArray(habitsPayload?.habits)) {
+    habitsToday.value = habitsPayload.habits.map((habit, index) => ({
+      id: habit.id,
+      name: habit.title,
+      color: habitPalette[index % habitPalette.length],
+      streak: Number(habit.streak_current || 0),
+      done: !!habit.done,
+    }));
+  } else {
+    habitsToday.value = [];
+  }
+
+  const gamificationPayload = gamificationResult.status === 'fulfilled' ? gamificationResult.value.data?.data : null;
+  if (gamificationPayload) {
+    const level = Number(gamificationPayload.level || 1);
+    const nextLevel = Number(gamificationPayload.next_level_xp || 0);
+    xp.value = {
+      total: Number(gamificationPayload.xp_total || 0),
+      level,
+      next_level: nextLevel > 0 ? nextLevel : Math.max(Number(gamificationPayload.xp_total || 0), 1),
+      title: levelTitles[level] || 'Starter',
+    };
+
+    streak.value = {
+      current: Number(gamificationPayload.streak_current || 0),
+      longest: Number(gamificationPayload.streak_longest || 0),
+    };
+  }
+}
 
 onMounted(() => {
-    interval = setInterval(() => {
-        s++;
-        const h = String(Math.floor(s / 3600)).padStart(2, '0');
-        const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
-        const sc = String(s % 60).padStart(2, '0');
-        timerText.value = `${h}:${m}:${sc}`;
-    }, 1000);
+  loadDashboard().catch((error) => {
+    console.warn('Dashboard data fetch failed', error);
+  });
 });
 
 onUnmounted(() => {
-    if (interval) clearInterval(interval);
+  stopTimer();
 });
-
-const plans = ref([
-    { id: 0, text: 'Complete React component library', done: true },
-    { id: 1, text: 'Revise DSA chapter 7 — trees & graphs', done: false },
-    { id: 2, text: '30-min gym session before dinner', done: false }
-]);
-
-const togglePlan = (id) => {
-    const plan = plans.value.find(p => p.id === id);
-    if (plan) plan.done = !plan.done;
-};
-
-const exerciseHabitDone = ref(false);
-const toggleExerciseHabit = () => {
-    exerciseHabitDone.value = !exerciseHabitDone.value;
-};
-
-const heatmapData = [
-  [0,1,2,3,2,1],[2,4,3,4,1,0],[1,3,4,3,2,1],[0,2,3,4,3,2],
-  [1,2,4,3,1,0],[3,4,3,2,1,0],[4,3,2,1,0,0],[2,3,4,3,2,1],
-  [0,1,2,3,4,2],[1,2,3,4,3,1],[2,3,4,3,2,0],[1,2,3,4,3,1],
-  [0,1,2,3,2,1],[3,4,3,2,1,0]
-];
 </script>
 
 <template>
-  <div :class="[isDark ? 'dark' : 'light']" id="wrapper">
-    <div class="mtoggle">
-      <span class="mlbl">dark</span>
-      <div class="mtrack" @click="toggleMode"><div class="mthumb"></div></div>
-      <span class="mlbl">light</span>
-    </div>
-    <div class="shell">
-
-      <!-- TOPBAR -->
-      <header class="topbar">
-        <div class="logo"><div class="logo-orb"><i class="ti ti-clock" aria-hidden="true"></i></div>TimeFlow</div>
-        <div class="tbr">
-          <div class="xp-chip"><i class="ti ti-bolt" aria-hidden="true"></i> 1,240 XP</div>
-          <div style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;position:relative;" class="t2">
-            <i class="ti ti-bell" aria-hidden="true"></i>
-            <div style="position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:#F06292;"></div>
-          </div>
-          <div class="avi">AK</div>
+  <div class="dashboard-page">
+    <AppShell :navigation="props.navigation">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Good morning, {{ greetingName }}</div>
+          <div class="page-subtitle">Stay consistent and keep the streak alive.</div>
         </div>
-      </header>
+        <div class="tf-date-badge">{{ dateLabel }}</div>
+      </div>
 
-      <!-- SIDEBAR -->
-      <aside class="sidebar">
-        <div class="nav-sec">Main</div>
-        <div class="ni on"><i class="ti ti-layout-dashboard" style="font-size:14px;" aria-hidden="true"></i> Dashboard</div>
-        <div class="ni t2"><i class="ti ti-player-play" style="font-size:14px;" aria-hidden="true"></i> Timer</div>
-        <div class="ni t2"><i class="ti ti-chart-bar" style="font-size:14px;" aria-hidden="true"></i> Analytics</div>
-        <div class="ni t2"><i class="ti ti-folder" style="font-size:14px;" aria-hidden="true"></i> Projects<span class="nb">4</span></div>
-        <div class="nav-sec">Grow</div>
-        <div class="ni t2"><i class="ti ti-trophy" style="font-size:14px;" aria-hidden="true"></i> Achievements</div>
-        <div class="ni t2"><i class="ti ti-target" style="font-size:14px;" aria-hidden="true"></i> Goals</div>
-        <div class="ni t2"><i class="ti ti-podium" style="font-size:14px;" aria-hidden="true"></i> Leaderboard</div>
-        <div class="nav-sec">Export</div>
-        <div class="ni t2"><i class="ti ti-file-analytics" style="font-size:14px;" aria-hidden="true"></i> Reports</div>
+      <div v-if="exams.length" class="exam-block">
+        <div class="tf-section-label">Upcoming exams</div>
+        <div class="exam-chips">
+          <div v-for="exam in exams" :key="exam.id" class="exam-chip" :class="exam.urgency">
+            {{ exam.subject }} - {{ exam.days }} days
+          </div>
+          <button class="exam-chip add" type="button">Add exam</button>
+        </div>
+      </div>
 
-        <div class="streak-box">
-          <span class="sf">🔥</span>
-          <div class="sn">14</div>
-          <div class="sl">day streak</div>
-          <div class="wdots">
-            <div class="wd on"></div><div class="wd on"></div><div class="wd on"></div>
-            <div class="wd on"></div><div class="wd on"></div><div class="wd on"></div>
-            <div class="wd now"></div>
+      <div v-if="timetableToday.length" class="timetable-block">
+        <div class="tf-section-label">Today schedule</div>
+        <div class="timetable-strip">
+          <div v-for="block in timetableToday" :key="block.id" class="timetable-item" :style="{ borderColor: block.color, color: block.color }">
+            <div class="timetable-time">{{ block.start_time }}</div>
+            <div class="timetable-name">{{ block.title }}</div>
+            <div class="timetable-type">{{ block.type }}</div>
           </div>
         </div>
-      </aside>
+      </div>
 
-      <!-- MAIN -->
-      <main class="main">
-
-        <!-- Header -->
-        <div class="ph fi fd1">
-          <div class="greeting t1">Good morning, Arjun 👋</div>
-          <div class="dtag t2">Thu, May 14</div>
-        </div>
-
-        <!-- Exam countdown chips -->
-        <div class="fi fd2">
-          <div class="slb">Upcoming exams</div>
-          <div class="echips">
-            <div class="ec ec-calm"><i class="ti ti-school" style="font-size:11px;" aria-hidden="true"></i> Physics · 18 days</div>
-            <div class="ec ec-warn"><i class="ti ti-alert-triangle" style="font-size:11px;" aria-hidden="true"></i> Maths · 9 days</div>
-            <div class="ec ec-hot"><i class="ti ti-alert-circle" style="font-size:11px;" aria-hidden="true"></i> DSA · 3 days</div>
-            <div class="ec ec-add" @click="sendPrompt('Add a new upcoming exam')"><i class="ti ti-plus" style="font-size:11px;" aria-hidden="true"></i> Add exam</div>
-          </div>
-        </div>
-
-        <!-- Timetable strip -->
-        <div class="fi fd2">
-          <div class="slb">Today's schedule</div>
-          <div class="ttstrip">
-            <div class="ttb" style="border-color:rgba(239,68,68,.22);background:rgba(239,68,68,.07);">
-              <div class="ttb-time" style="color:#EF4444;">8:00 AM</div>
-              <div class="ttb-name" style="color:#EF4444;">Physics</div>
-              <div class="ttb-type" style="color:rgba(239,68,68,.7);">🎓 class</div>
-            </div>
-            <div class="ttb" style="border-color:rgba(124,92,252,.25);background:rgba(124,92,252,.08);">
-              <div class="ttb-time" style="color:var(--v);">10:00 AM</div>
-              <div class="ttb-name" style="color:#A78BFA;">DSA study</div>
-              <div class="ttb-type" style="color:rgba(124,92,252,.65);">📚 study</div>
-            </div>
-            <div class="ttb act" style="border-color:rgba(14,207,164,.38);background:rgba(14,207,164,.09);">
-              <div class="row" style="gap:3px;"><div class="pdot"></div><div class="ttb-time" style="color:var(--m);">12:00 PM</div></div>
-              <div class="ttb-name" style="color:var(--m);">Frontend dev</div>
-              <div class="ttb-type" style="color:rgba(14,207,164,.7);">📚 now</div>
-            </div>
-            <div class="ttb" style="border-color:rgba(245,166,35,.2);background:rgba(245,166,35,.06);">
-              <div class="ttb-time" style="color:var(--a);">2:00 PM</div>
-              <div class="ttb-name" style="color:var(--a);">Lunch break</div>
-              <div class="ttb-type" style="color:rgba(245,166,35,.65);">☕ break</div>
-            </div>
-            <div class="ttb" style="border-color:rgba(56,189,248,.2);background:rgba(56,189,248,.06);">
-              <div class="ttb-time" style="color:var(--sky);">3:00 PM</div>
-              <div class="ttb-name" style="color:var(--sky);">Maths review</div>
-              <div class="ttb-type" style="color:rgba(56,189,248,.65);">📚 study</div>
-            </div>
-            <div class="ttb" style="border-color:rgba(240,98,146,.2);background:rgba(240,98,146,.07);">
-              <div class="ttb-time" style="color:var(--r);">6:00 PM</div>
-              <div class="ttb-name" style="color:var(--r);">Gym</div>
-              <div class="ttb-type" style="color:rgba(240,98,146,.65);">🏃 personal</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Focus ring + timer -->
-        <div class="grid2 fi fd3">
-          <div class="card">
-            <div class="slb" style="margin-bottom:10px;">Today's focus</div>
-            <div class="row" style="gap:11px;">
-              <div class="focus-ring-wrap">
-                <svg class="ring-svg" width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
-                  <circle class="rtrack" cx="36" cy="36" r="30"/>
-                  <circle class="rfill" cx="36" cy="36" r="30"/>
-                </svg>
-                <div class="rc"><div class="rh t1">3.8h</div><div class="rl t3">of 6h</div></div>
-              </div>
-              <div>
-                <div style="font-size:20px;font-weight:800;letter-spacing:-.5px;color:var(--v);">63%</div>
-                <div class="t2" style="font-size:10px;margin-top:3px;">daily goal</div>
-                <div class="row" style="gap:10px;margin-top:7px;">
-                  <div><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--v);">6</div><div class="t3" style="font-size:9px;">sessions</div></div>
-                  <div><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--m);">84</div><div class="t3" style="font-size:9px;">score</div></div>
-                  <div><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--a);">38m</div><div class="t3" style="font-size:9px;">avg</div></div>
-                </div>
+      <div class="grid-two">
+        <div class="tf-card">
+          <div class="tf-section-label">Today focus</div>
+          <div class="focus-row">
+            <div class="focus-ring">
+              <svg viewBox="0 0 72 72" aria-hidden="true">
+                <circle class="ring-track" cx="36" cy="36" r="30" />
+                <circle class="ring-fill" cx="36" cy="36" r="30" :style="{ strokeDashoffset: 188 - (188 * goalPercent) / 100 }" />
+              </svg>
+              <div class="ring-center">
+                <div class="focus-hours">{{ loggedHours }}h</div>
+                <div class="focus-label">of {{ dailyGoalHours }}h</div>
               </div>
             </div>
-          </div>
-          <div class="timer-card">
-            <div class="row between">
-              <div class="live-tag"><div class="pdot"></div>LIVE</div>
-              <button class="stop-btn" @click="sendPrompt('Stop current timer and show session summary')">■ Stop</button>
-            </div>
-            <div class="tproj">Coding · Frontend</div>
-            <div class="tdig t1">{{ timerText }}</div>
-            <div class="tbar"><div class="tbar-f"></div></div>
-          </div>
-        </div>
-
-        <!-- Today's plan -->
-        <div class="card fi fd4">
-          <div class="row between" style="margin-bottom:10px;">
-            <div class="slb" style="margin-bottom:0;">Today's 3 priorities</div>
-            <div class="xpbadge"><i class="ti ti-bolt" style="font-size:10px;" aria-hidden="true"></i>+30 XP on completion</div>
-          </div>
-          
-          <div v-for="plan in plans" :key="plan.id" class="plan-item" @click="togglePlan(plan.id)">
-            <div class="chk" :class="{ 'dn': plan.done }">
-              <i v-if="plan.done" class="ti ti-check" style="font-size:10px;color:#fff;" aria-hidden="true"></i>
-            </div>
-            <span class="pt t1" :class="{ 'dn': plan.done }">{{ plan.text }}</span>
-          </div>
-
-        </div>
-
-        <!-- Stats row -->
-        <div class="stats3 fi fd4">
-          <div class="sc">
-            <div class="sc-lbl">Today</div>
-            <div class="sc-val t1">3.8h</div>
-            <div class="sc-sub t2" style="font-size:10px;">logged so far</div>
-            <div class="chip-up"><i class="ti ti-arrow-up" style="font-size:9px;" aria-hidden="true"></i>+0.6h vs yesterday</div>
-          </div>
-          <div class="sc">
-            <div class="sc-lbl">This week</div>
-            <div class="sc-val t1">24.1h</div>
-            <div class="sc-sub t2" style="font-size:10px;">of 40h goal</div>
-            <div class="chip-up"><i class="ti ti-arrow-up" style="font-size:9px;" aria-hidden="true"></i>60% complete</div>
-          </div>
-          <div class="sc">
-            <div class="sc-lbl">Streak</div>
-            <div class="sc-val" style="color:var(--a);">14d</div>
-            <div class="sc-sub t2" style="font-size:10px;">best: 21 days</div>
-            <div class="chip-str">2× multiplier</div>
-          </div>
-        </div>
-
-        <!-- XP + challenge -->
-        <div class="grid2 fi fd5">
-          <div class="xp-card">
-            <div class="lvl-row">
-              <div class="lvl-name t1">Dedicated</div>
-              <div class="lvl-badge">Lv. 4</div>
-            </div>
-            <div class="xptrack"><div class="xpfill"></div></div>
-            <div class="xp-nums t3"><span>1,240 XP</span><span>1,600 next</span></div>
-          </div>
-          <div class="ch-card">
-            <div class="ch-lbl"><i class="ti ti-bolt" style="font-size:10px;" aria-hidden="true"></i>Daily challenge</div>
-            <div class="ch-title t1">Complete 4 Pomodoros without stopping</div>
-            <div class="row">
-              <div class="ch-dots">
-                <div class="cd dn"></div><div class="cd dn"></div><div class="cd dn"></div><div class="cd"></div>
-              </div>
-              <div class="ch-xp">+50 XP</div>
+            <div class="focus-stats">
+              <div class="focus-percent">{{ goalPercent }}%</div>
+              <div class="stat">Sessions {{ todayStats.focus_sessions }}</div>
+              <div class="stat">Avg {{ Math.round(todayStats.avg_session_seconds / 60) }}m</div>
             </div>
           </div>
         </div>
+        <div class="tf-card live-card">
+          <div class="live-header">
+            <div class="live-tag">{{ hasActiveSession ? 'Live' : 'Idle' }}</div>
+            <button v-if="hasActiveSession" class="outline-btn" type="button">Stop</button>
+          </div>
+          <div class="live-project">{{ activeSessionLabel }}</div>
+          <div class="live-timer">{{ formattedTimer }}</div>
+          <div class="live-bar"><span></span></div>
+        </div>
+      </div>
 
-        <!-- Habits -->
-        <div class="card fi fd6">
-          <div class="row between" style="margin-bottom:9px;">
-            <div class="slb" style="margin-bottom:0;">Habits today</div>
-            <div style="font-size:10px;font-weight:600;" class="t2">4 / 5 done</div>
-          </div>
-          <div class="hrow">
-            <span class="hname t1" style="font-size:11px;">📚 Study 2h+</span>
-            <div class="hdots2">
-              <div class="hc dn" style="background:var(--v);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc dn" style="background:var(--v);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc dn" style="background:var(--v);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc dn" style="background:var(--v);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc dn" style="background:var(--v);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc t3" style="font-size:9px;">S</div>
-              <div class="hc t3" style="font-size:9px;">S</div>
+      <div class="tf-card">
+        <div class="plan-header">
+          <div class="tf-section-label">Today priorities</div>
+          <div class="plan-xp">+30 XP</div>
+        </div>
+        <div v-for="item in dailyPlan" :key="item.id" class="plan-row" @click="togglePlan(item.id)">
+          <span class="plan-check" :class="{ done: item.done }"></span>
+          <span class="plan-text" :class="{ done: item.done }">{{ item.text }}</span>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="tf-card stat-card">
+          <div class="stat-label">Today</div>
+          <div class="stat-value">{{ loggedHours }}h</div>
+          <div class="stat-meta">logged so far</div>
+        </div>
+        <div class="tf-card stat-card">
+          <div class="stat-label">This week</div>
+          <div class="stat-value">{{ (weekStats.total_seconds / 3600).toFixed(1) }}h</div>
+          <div class="stat-meta">goal {{ (weekStats.goal_seconds / 3600).toFixed(0) }}h</div>
+        </div>
+        <div class="tf-card stat-card">
+          <div class="stat-label">Streak</div>
+          <div class="stat-value">{{ streak.current }}d</div>
+          <div class="stat-meta">best {{ streak.longest }} days</div>
+        </div>
+      </div>
+
+      <div class="grid-two">
+        <div class="tf-card">
+          <div class="xp-header">
+            <div>
+              <div class="xp-title">{{ xp.title }}</div>
+              <div class="xp-level">Level {{ xp.level }}</div>
             </div>
-            <span class="hstreak">🔥 12</span>
+            <div class="xp-total">{{ xp.total }} XP</div>
           </div>
-          <div class="hrow">
-            <span class="hname t1" style="font-size:11px;">🏃 Exercise</span>
-            <div class="hdots2">
-              <div class="hc dn" style="background:var(--r);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc"></div>
-              <div class="hc dn" style="background:var(--r);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc" :class="{ 'dn': exerciseHabitDone }" :style="exerciseHabitDone ? { background: 'var(--r)' } : {}" @click="toggleExerciseHabit">
-                <i v-if="exerciseHabitDone" class="ti ti-check" style="font-size:9px" aria-hidden="true"></i>
-              </div>
-              <div class="hc"></div>
-              <div class="hc t3" style="font-size:9px;">S</div>
-              <div class="hc t3" style="font-size:9px;">S</div>
-            </div>
-            <span class="hstreak">🔥 4</span>
-          </div>
-          <div class="hrow">
-            <span class="hname t1" style="font-size:11px;">🧘 Meditate</span>
-            <div class="hdots2">
-              <div class="hc dn" style="background:var(--m);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc dn" style="background:var(--m);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc dn" style="background:var(--m);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc dn" style="background:var(--m);"><i class="ti ti-check" style="font-size:9px;" aria-hidden="true"></i></div>
-              <div class="hc"></div>
-              <div class="hc t3" style="font-size:9px;">S</div>
-              <div class="hc t3" style="font-size:9px;">S</div>
-            </div>
-            <span class="hstreak">🔥 21</span>
+          <div class="xp-bar"><span :style="{ width: (xp.total / xp.next_level) * 100 + '%' }"></span></div>
+          <div class="xp-meta">Next {{ xp.next_level }} XP</div>
+        </div>
+        <div class="tf-card">
+          <div class="challenge-label">Daily challenge</div>
+          <div class="challenge-title">{{ challenge.title }}</div>
+          <div class="challenge-progress">
+            <span v-for="index in challenge.target" :key="index" class="challenge-dot" :class="{ done: index <= challenge.progress }"></span>
+            <span class="challenge-xp">+{{ challenge.reward }} XP</span>
           </div>
         </div>
+      </div>
 
-        <!-- Quick start -->
-        <div class="fi fd7">
-          <div class="slb">Quick start</div>
-          <div class="qrow">
-            <button class="qb" @click="sendPrompt('Start a new Pomodoro session')"><div class="qi">🍅</div><div class="ql">Pomodoro</div></button>
-            <button class="qb" @click="sendPrompt('Show my weekly analytics breakdown')"><div class="qi">📊</div><div class="ql">Analytics</div></button>
-            <button class="qb" @click="sendPrompt('Generate a PDF report for this week')"><div class="qi">📄</div><div class="ql">Report</div></button>
+      <div v-if="habitsToday.length" class="tf-card">
+        <div class="habits-header">
+          <div class="tf-section-label">Habits today</div>
+        </div>
+        <div v-for="habit in habitsToday" :key="habit.id" class="habit-row" @click="toggleHabit(habit.id)">
+          <div class="habit-name">{{ habit.name }}</div>
+          <span class="habit-dot" :style="{ background: habit.done ? habit.color : 'transparent', borderColor: habit.color }"></span>
+          <div class="habit-streak">{{ habit.streak }}</div>
+        </div>
+      </div>
+
+      <div class="quick-start">
+        <div class="tf-section-label">Quick start</div>
+        <div class="quick-grid">
+          <button class="quick-btn" type="button">Pomodoro</button>
+          <button class="quick-btn" type="button">Analytics</button>
+          <button class="quick-btn" type="button">Report</button>
+        </div>
+      </div>
+
+      <div class="tf-card heatmap">
+        <div class="heatmap-header">
+          <div class="heatmap-title">Activity</div>
+          <div class="heatmap-scale">Low - High</div>
+        </div>
+        <div class="heatmap-grid">
+          <div v-for="(col, colIndex) in heatmap" :key="colIndex" class="heatmap-col">
+            <div v-for="(cell, cellIndex) in col" :key="cellIndex" class="heatmap-cell" :class="'level-' + cell"></div>
           </div>
         </div>
+      </div>
 
-        <!-- Heatmap -->
-        <div class="hmap fi fd8">
-          <div class="hmap-head">
-            <div style="font-size:12px;font-weight:700;" class="t1">Activity — May 2026</div>
-            <div class="row" style="gap:3px;font-size:9.5px;" class="t3">
-              Low
-              <div class="hcell l1" style="display:inline-block;"></div>
-              <div class="hcell l2" style="display:inline-block;"></div>
-              <div class="hcell l4" style="display:inline-block;"></div>
-              High
-            </div>
-          </div>
-          <div class="hmap-grid">
-            <div v-for="(col, ci) in heatmapData" :key="ci" class="hmap-col">
-              <div 
-                v-for="(val, ri) in col" 
-                :key="ri" 
-                class="hcell" 
-                :class="['l' + val, (ci === 13 && ri === 0) ? 'tdy' : '']"
-              ></div>
-            </div>
-          </div>
+      <div class="tf-card">
+        <div class="recent-header">
+          <div class="recent-title">Recent sessions</div>
+          <button class="link-btn" type="button">See all</button>
         </div>
-
-        <!-- Recent sessions -->
-        <div class="scard fi fd9">
-          <div class="row between" style="margin-bottom:10px;">
-            <div style="font-size:12px;font-weight:700;" class="t1">Recent sessions</div>
-            <div class="see-all" @click="sendPrompt('Show all sessions for today')">See all →</div>
+        <div v-for="session in recentSessions" :key="session.id" class="recent-row">
+          <span class="color-dot" :style="{ background: session.color }"></span>
+          <div>
+            <div class="recent-name">{{ session.name }}</div>
+            <div class="recent-meta">{{ session.category }}</div>
           </div>
-          <div class="srow">
-            <div class="sdot" style="background:var(--v);"></div>
-            <div class="sinfo"><div class="sn t1">Frontend work</div><div class="sm t3">Coding · ongoing</div></div>
-            <div class="sdur">01:24</div>
-          </div>
-          <div class="srow">
-            <div class="sdot" style="background:var(--m);"></div>
-            <div class="sinfo"><div class="sn t1">DSA practice</div><div class="sm t3">Study · 11:20 AM</div></div>
-            <div class="sdur">52m</div>
-          </div>
-          <div class="srow">
-            <div class="sdot" style="background:var(--a);"></div>
-            <div class="sinfo"><div class="sn t1">Team standup</div><div class="sm t3">Meetings · 9:30 AM</div></div>
-            <div class="sdur">15m</div>
-          </div>
+          <div class="recent-duration">{{ session.duration }}</div>
         </div>
+      </div>
 
-      </main>
-    </div>
+      <div v-if="insights.length" class="insights">
+        <div class="tf-section-label">Insights</div>
+        <div v-for="insight in insights" :key="insight.type" class="insight-card">
+          {{ insight.message }}
+        </div>
+      </div>
+    </AppShell>
   </div>
 </template>
 
 <style>
-/* Scoping is removed because some child elements might need access to it via root, but we encapsulate within wrapper */
-#wrapper {
-  --sans:'Plus Jakarta Sans',sans-serif;
-  --mono:'JetBrains Mono',monospace;
-  --v:#7C5CFC;--vs:rgba(124,92,252,0.12);--vb:rgba(124,92,252,0.22);
-  --m:#0ECFA4;--ms:rgba(14,207,164,0.12);--mb:rgba(14,207,164,0.25);
-  --a:#F5A623;--as:rgba(245,166,35,0.12);--ab:rgba(245,166,35,0.28);
-  --r:#F06292;--rs:rgba(240,98,146,0.1);
-  --sky:#38BDF8;--skys:rgba(56,189,248,0.1);--skyb:rgba(56,189,248,0.28);
-  --red:#EF4444;--reds:rgba(239,68,68,0.1);--redb:rgba(239,68,68,0.28);
-  font-family:var(--sans);background:transparent;
+.dashboard-page {
   min-height: 100vh;
+  background: var(--tf-bg-page);
+  padding: 14px;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  color: var(--tf-text-primary);
 }
 
-#wrapper * {
-  box-sizing: border-box;
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-#wrapper .shell{display:grid;grid-template-columns:190px 1fr;grid-template-rows:auto 1fr;min-height:700px;border-radius:14px;overflow:hidden;transition:all 0.35s;}
+.page-title {
+  font-size: 17px;
+  font-weight: 800;
+}
 
-#wrapper.dark .shell{background:#0C0C10;border:1px solid rgba(255,255,255,0.1);}
-#wrapper.light .shell{background:#F5F0E8;border:1px solid rgba(80,60,20,0.15);}
+.page-subtitle {
+  font-size: 12px;
+  color: var(--tf-text-secondary);
+}
 
-/* TOPBAR */
-#wrapper .topbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:11px 18px;transition:all 0.35s;}
-#wrapper.dark .topbar{background:#13131A;border-bottom:1px solid rgba(255,255,255,0.07);}
-#wrapper.light .topbar{background:#F0EAE0;border-bottom:1px solid rgba(80,60,20,0.12);}
-#wrapper .logo{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:800;letter-spacing:-.4px;}
-#wrapper.dark .logo{color:#EEEAF4;}
-#wrapper.light .logo{color:#1C1917;}
-#wrapper .logo-orb{width:26px;height:26px;border-radius:7px;background:var(--v);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;}
-#wrapper .tbr{display:flex;align-items:center;gap:9px;}
-#wrapper .xp-chip{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--mono);background:var(--vs);border:1px solid var(--vb);}
-#wrapper.dark .xp-chip{color:#9B79FF;}
-#wrapper.light .xp-chip{color:#5B3FD4;}
-#wrapper .avi{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--v),var(--m));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;}
+.exam-block,
+.timetable-block {
+  margin-top: 12px;
+}
 
-/* SIDEBAR */
-#wrapper .sidebar{padding:12px 9px;display:flex;flex-direction:column;gap:1px;transition:all 0.35s;}
-#wrapper.dark .sidebar{background:#13131A;border-right:1px solid rgba(255,255,255,0.06);}
-#wrapper.light .sidebar{background:#F0EAE0;border-right:1px solid rgba(80,60,20,0.1);}
-#wrapper .nav-sec{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:8px 8px 3px;}
-#wrapper.dark .nav-sec{color:#3E3C4A;}
-#wrapper.light .nav-sec{color:#A89E8E;}
-#wrapper .ni{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:all .15s;}
-#wrapper.dark .ni{color:#8B879E;}
-#wrapper.light .ni{color:#6B6256;}
-#wrapper.dark .ni:hover{background:rgba(255,255,255,0.04);color:#EEEAF4;}
-#wrapper.light .ni:hover{background:rgba(80,60,20,0.06);color:#1C1917;}
-#wrapper .ni.on{background:var(--vs);border-color:var(--vb);}
-#wrapper.dark .ni.on{color:#A78BFA;}
-#wrapper.light .ni.on{color:#5B3FD4;}
-#wrapper .nb{margin-left:auto;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;background:var(--v);color:#fff;}
+.exam-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 
-#wrapper .streak-box{margin-top:auto;border-radius:10px;padding:12px 10px;text-align:center;}
-#wrapper.dark .streak-box{background:#18181F;border:1px solid rgba(255,255,255,0.07);}
-#wrapper.light .streak-box{background:#E8E0D0;border:1px solid rgba(80,60,20,0.12);}
-#wrapper .sf{font-size:22px;display:block;animation:flm 2.5s ease-in-out infinite;}
-@keyframes flm{0%,100%{transform:scaleY(1) rotate(-1deg);}50%{transform:scaleY(1.1) rotate(1deg);}}
-#wrapper .sn{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--a);line-height:1.1;}
-#wrapper .sl{font-size:10px;margin-top:2px;}
-#wrapper.dark .sl{color:#3E3C4A;}
-#wrapper.light .sl{color:#A89E8E;}
-#wrapper .wdots{display:flex;gap:3px;justify-content:center;margin-top:8px;}
-#wrapper .wd{width:8px;height:8px;border-radius:50%;}
-#wrapper.dark .wd{background:rgba(255,255,255,0.1);}
-#wrapper.light .wd{background:rgba(80,60,20,0.15);}
-#wrapper .wd.on{background:var(--a)!important;box-shadow:0 0 4px rgba(245,166,35,.5);}
-#wrapper .wd.now{background:var(--m)!important;box-shadow:0 0 4px rgba(14,207,164,.5);}
+.exam-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--tf-border-default);
+  color: var(--tf-text-secondary);
+  background: var(--tf-bg-card-alt);
+}
 
-/* MAIN */
-#wrapper .main{padding:16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;}
+.exam-chip.calm {
+  border-color: rgba(56, 189, 248, 0.28);
+  color: #0369a1;
+}
 
-/* SECTION LABEL */
-#wrapper .slb{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin-bottom:6px;}
-#wrapper.dark .slb{color:#3E3C4A;}
-#wrapper.light .slb{color:#A89E8E;}
+.exam-chip.warn {
+  border-color: rgba(245, 166, 35, 0.28);
+  color: #92400e;
+}
 
-/* CARDS */
-#wrapper .card{border-radius:11px;padding:13px 15px;transition:all .35s;}
-#wrapper.dark .card{background:#13131A;border:1px solid rgba(255,255,255,0.07);}
-#wrapper.light .card{background:#FFFFFF;border:1px solid rgba(80,60,20,0.1);}
+.exam-chip.urgent {
+  border-color: rgba(239, 68, 68, 0.28);
+  color: #991b1b;
+}
 
-#wrapper .row{display:flex;align-items:center;gap:9px;}
-#wrapper .between{justify-content:space-between;}
+.exam-chip.add {
+  border-style: dashed;
+}
 
-/* T-UTILS */
-#wrapper .t1{transition:color .35s;}
-#wrapper.dark .t1{color:#EEEAF4;}
-#wrapper.light .t1{color:#1C1917;}
-#wrapper .t2{transition:color .35s;}
-#wrapper.dark .t2{color:#8B879E;}
-#wrapper.light .t2{color:#6B6256;}
-#wrapper .t3{transition:color .35s;}
-#wrapper.dark .t3{color:#3E3C4A;}
-#wrapper.light .t3{color:#A89E8E;}
+.timetable-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
 
-/* PAGE HEADER */
-#wrapper .ph{display:flex;align-items:center;justify-content:space-between;}
-#wrapper .greeting{font-size:17px;font-weight:800;letter-spacing:-.4px;}
-#wrapper .dtag{font-size:11px;font-weight:500;padding:3px 9px;border-radius:14px;}
-#wrapper.dark .dtag{background:#18181F;border:1px solid rgba(255,255,255,0.07);}
-#wrapper.light .dtag{background:#F0EAE0;border:1px solid rgba(80,60,20,0.1);}
+.timetable-item {
+  min-width: 90px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid;
+}
 
-/* EXAM CHIPS */
-#wrapper .echips{display:flex;gap:6px;flex-wrap:wrap;}
-#wrapper .ec{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid;cursor:pointer;transition:opacity .15s;}
-#wrapper .ec:hover{opacity:.8;}
-#wrapper .ec-calm{background:var(--skys);border-color:var(--skyb);color:#38BDF8;}
-#wrapper.light .ec-calm{color:#0369A1;}
-#wrapper .ec-warn{background:var(--as);border-color:var(--ab);color:var(--a);}
-#wrapper.light .ec-warn{color:#92400E;}
-#wrapper .ec-hot{background:var(--reds);border-color:var(--redb);color:var(--red);animation:hp 1.8s ease-in-out infinite;}
-#wrapper.light .ec-hot{color:#991B1B;}
-@keyframes hp{0%,100%{opacity:1;}50%{opacity:.6;}}
-#wrapper .ec-add{background:transparent;border:1px dashed;}
-#wrapper.dark .ec-add{border-color:rgba(255,255,255,.15);color:#3E3C4A;}
-#wrapper.light .ec-add{border-color:rgba(80,60,20,.2);color:#A89E8E;}
+.timetable-time {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
 
-/* TIMETABLE STRIP */
-#wrapper .ttstrip{display:flex;gap:6px;overflow-x:auto;padding-bottom:3px;}
-#wrapper .ttstrip::-webkit-scrollbar{display:none;}
-#wrapper .ttb{flex-shrink:0;border-radius:8px;padding:7px 10px;border:1px solid;min-width:82px;}
-#wrapper .ttb.act{border-width:1.5px;}
-#wrapper .ttb-time{font-size:9px;font-family:var(--mono);}
-#wrapper .ttb-name{font-size:11px;font-weight:700;margin-top:2px;line-height:1.2;}
-#wrapper .ttb-type{font-size:9px;margin-top:2px;opacity:.75;}
-#wrapper .pdot{width:6px;height:6px;border-radius:50%;background:var(--m);animation:pd 1.4s ease-in-out infinite;flex-shrink:0;}
-@keyframes pd{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.7);}}
+.timetable-name {
+  font-size: 11px;
+  font-weight: 700;
+}
 
-/* FOCUS + TIMER GRID */
-#wrapper .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.timetable-type {
+  font-size: 9px;
+  opacity: 0.7;
+}
 
-#wrapper .focus-ring-wrap{position:relative;width:72px;height:72px;flex-shrink:0;}
-#wrapper .ring-svg{transform:rotate(-90deg);}
-#wrapper circle.rtrack{fill:none;stroke-width:5;}
-#wrapper.dark circle.rtrack{stroke:#1F1F28;}
-#wrapper.light circle.rtrack{stroke:rgba(80,60,20,.12);}
-#wrapper circle.rfill{fill:none;stroke:var(--v);stroke-width:5;stroke-linecap:round;stroke-dasharray:188;stroke-dashoffset:72;animation:rA 1.2s cubic-bezier(.4,0,.2,1) both;}
-@keyframes rA{from{stroke-dashoffset:188;}to{stroke-dashoffset:72;}}
-#wrapper .rc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-#wrapper .rh{font-family:var(--mono);font-size:13px;font-weight:600;line-height:1;}
-#wrapper .rl{font-size:9px;margin-top:2px;}
+.grid-two {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
 
-#wrapper .timer-card{border-radius:11px;padding:13px 15px;border:1px solid rgba(14,207,164,.22);position:relative;overflow:hidden;transition:all .35s;}
-#wrapper.dark .timer-card{background:#13131A;}
-#wrapper.light .timer-card{background:#FFFFFF;}
-#wrapper .timer-card::before{content:'';position:absolute;inset:0;background:var(--ms);pointer-events:none;}
-#wrapper .live-tag{display:flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;color:var(--m);letter-spacing:.05em;}
-#wrapper .stop-btn{font-size:10px;font-weight:700;padding:5px 10px;border-radius:7px;cursor:pointer;border:1px solid rgba(14,207,164,.3);background:rgba(14,207,164,.12);color:var(--m);font-family:var(--sans);transition:all .15s;}
-#wrapper .stop-btn:hover{background:rgba(14,207,164,.22);}
-#wrapper .tproj{font-size:10px;font-weight:600;color:var(--m);margin-top:8px;letter-spacing:.03em;}
-#wrapper .tdig{font-family:var(--mono);font-size:28px;font-weight:600;letter-spacing:.02em;line-height:1.1;margin-top:3px;}
-#wrapper .tbar{height:3px;border-radius:2px;margin-top:10px;overflow:hidden;}
-#wrapper.dark .tbar{background:#1F1F28;}
-#wrapper.light .tbar{background:rgba(80,60,20,.1);}
-#wrapper .tbar-f{height:100%;background:var(--m);animation:tbG 1s ease-out forwards;width:63%;}
-@keyframes tbG{to{width:63%;}}
+.focus-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
 
-/* DAILY PLAN CARD */
-#wrapper .plan-item{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid;}
-#wrapper.dark .plan-item{border-color:rgba(255,255,255,.06);}
-#wrapper.light .plan-item{border-color:rgba(80,60,20,.08);}
-#wrapper .plan-item:last-child{border-bottom:none;}
-#wrapper .chk{width:17px;height:17px;border-radius:5px;border:1.5px solid;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
-#wrapper.dark .chk{border-color:rgba(255,255,255,.2);}
-#wrapper.light .chk{border-color:rgba(80,60,20,.25);}
-#wrapper .chk.dn{background:var(--m);border-color:var(--m);}
-#wrapper .pt{font-size:12.5px;font-weight:500;flex:1;cursor:pointer;}
-#wrapper.dark .pt.dn{color:#3E3C4A;text-decoration:line-through;}
-#wrapper.light .pt.dn{color:#A89E8E;text-decoration:line-through;}
-#wrapper .xpbadge{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--vs);border:1px solid var(--vb);white-space:nowrap;}
-#wrapper.dark .xpbadge{color:#A78BFA;}
-#wrapper.light .xpbadge{color:#5B3FD4;}
+.focus-ring {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
 
-/* STATS ROW */
-#wrapper .stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
-#wrapper .sc{border-radius:10px;padding:11px 12px;}
-#wrapper.dark .sc{background:#13131A;border:1px solid rgba(255,255,255,.07);}
-#wrapper.light .sc{background:#FFFFFF;border:1px solid rgba(80,60,20,.1);}
-#wrapper .sc-lbl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;}
-#wrapper.dark .sc-lbl{color:#3E3C4A;}
-#wrapper.light .sc-lbl{color:#A89E8E;}
-#wrapper .sc-val{font-family:var(--mono);font-size:20px;font-weight:700;line-height:1;}
-#wrapper .sc-sub{font-size:10px;margin-top:3px;}
-#wrapper .chip-up{display:inline-flex;align-items:center;gap:2px;font-size:9.5px;font-weight:600;padding:1px 6px;border-radius:8px;margin-top:5px;background:rgba(14,207,164,.12);color:var(--m);}
-#wrapper.light .chip-up{color:#0A8A6C;}
-#wrapper .chip-str{display:inline-flex;align-items:center;gap:2px;font-size:9.5px;font-weight:600;padding:1px 6px;border-radius:8px;margin-top:5px;background:var(--as);color:var(--a);}
-#wrapper.light .chip-str{color:#92400E;}
+.focus-ring svg {
+  width: 72px;
+  height: 72px;
+  transform: rotate(-90deg);
+}
 
-/* XP + CHALLENGE */
-#wrapper .xp-card{border-radius:10px;padding:12px 14px;}
-#wrapper.dark .xp-card{background:#13131A;border:1px solid rgba(255,255,255,.07);}
-#wrapper.light .xp-card{background:#FFFFFF;border:1px solid rgba(80,60,20,.1);}
-#wrapper .lvl-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
-#wrapper .lvl-name{font-size:13px;font-weight:700;}
-#wrapper .lvl-badge{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:9px;background:var(--vs);border:1px solid var(--vb);}
-#wrapper.dark .lvl-badge{color:#A78BFA;}
-#wrapper.light .lvl-badge{color:#5B3FD4;}
-#wrapper .xptrack{height:4px;border-radius:3px;overflow:hidden;margin-bottom:5px;}
-#wrapper.dark .xptrack{background:#1F1F28;}
-#wrapper.light .xptrack{background:rgba(80,60,20,.12);}
-#wrapper .xpfill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--v),#A78BFA);animation:xpG 1.2s .4s cubic-bezier(.4,0,.2,1) both;width:68%;}
-@keyframes xpG{to{width:68%;}}
-#wrapper .xp-nums{display:flex;justify-content:space-between;font-size:9.5px;font-family:var(--mono);}
+.ring-track {
+  fill: none;
+  stroke: rgba(80, 60, 20, 0.12);
+  stroke-width: 5;
+}
 
-#wrapper .ch-card{border-radius:10px;padding:12px 14px;position:relative;overflow:hidden;}
-#wrapper.dark .ch-card{background:#13131A;border:1px solid rgba(255,255,255,.07);}
-#wrapper.light .ch-card{background:#FFFFFF;border:1px solid rgba(80,60,20,.1);}
-#wrapper .ch-card::before{content:'';position:absolute;top:-10px;right:-10px;width:60px;height:60px;border-radius:50%;background:var(--as);filter:blur(18px);}
-#wrapper .ch-lbl{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:9px;background:var(--as);border:1px solid var(--ab);color:var(--a);margin-bottom:7px;letter-spacing:.04em;}
-#wrapper.light .ch-lbl{color:#92400E;}
-#wrapper .ch-title{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:8px;}
-#wrapper .ch-dots{display:flex;gap:4px;}
-#wrapper .cd{width:11px;height:11px;border-radius:3px;}
-#wrapper.dark .cd{background:#1F1F28;}
-#wrapper.light .cd{background:rgba(80,60,20,.12);}
-#wrapper .cd.dn{background:var(--a);}
-#wrapper .ch-xp{font-size:9.5px;font-weight:600;color:var(--a);margin-left:auto;}
-#wrapper.light .ch-xp{color:#92400E;}
+.ring-fill {
+  fill: none;
+  stroke: var(--tf-violet);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 188;
+}
 
-/* HABIT ROW */
-#wrapper .hrow{display:flex;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid;}
-#wrapper.dark .hrow{border-color:rgba(255,255,255,.06);}
-#wrapper.light .hrow{border-color:rgba(80,60,20,.08);}
-#wrapper .hrow:last-child{border-bottom:none;}
-#wrapper .hname{font-size:11px;font-weight:600;width:80px;flex-shrink:0;}
-#wrapper .hdots2{display:flex;gap:3px;}
-#wrapper .hc{width:19px;height:19px;border-radius:5px;border:1px solid;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;transition:all .2s;font-weight:700;}
-#wrapper.dark .hc{background:#18181F;border-color:rgba(255,255,255,.1);}
-#wrapper.light .hc{background:#F5F0E8;border-color:rgba(80,60,20,.15);}
-#wrapper .hc.dn{border-color:transparent;color:#fff;}
-#wrapper .hstreak{font-size:10px;font-weight:700;color:var(--a);font-family:var(--mono);margin-left:auto;white-space:nowrap;}
+.ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 
-/* QUICK START */
-#wrapper .qrow{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
-#wrapper .qb{border-radius:9px;padding:10px 8px;text-align:center;cursor:pointer;border:1px solid;background:none;font-family:var(--sans);transition:all .18s;}
-#wrapper.dark .qb{background:#13131A;border-color:rgba(255,255,255,.07);}
-#wrapper.light .qb{background:#FFFFFF;border-color:rgba(80,60,20,.1);}
-#wrapper.dark .qb:hover{background:#1F1F28;border-color:var(--vb);}
-#wrapper.light .qb:hover{background:#FAF7F2;border-color:var(--vb);}
-#wrapper .qi{font-size:16px;margin-bottom:3px;}
-#wrapper .ql{font-size:10.5px;font-weight:600;}
-#wrapper.dark .ql{color:#8B879E;}
-#wrapper.light .ql{color:#6B6256;}
+.focus-hours {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
 
-/* HEATMAP */
-#wrapper .hmap{border-radius:10px;padding:12px 14px;}
-#wrapper.dark .hmap{background:#13131A;border:1px solid rgba(255,255,255,.07);}
-#wrapper.light .hmap{background:#FFFFFF;border:1px solid rgba(80,60,20,.1);}
-#wrapper .hmap-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-#wrapper .hmap-grid{display:flex;gap:3px;}
-#wrapper .hmap-col{display:flex;flex-direction:column;gap:2px;}
-#wrapper .hcell{width:9px;height:9px;border-radius:2px;cursor:pointer;transition:transform .1s;}
-#wrapper .hcell:hover{transform:scale(1.5);}
-#wrapper.dark .hcell.l0{background:#1F1F28;}
-#wrapper.light .hcell.l0{background:rgba(80,60,20,.1);}
-#wrapper .hcell.l1{background:rgba(124,92,252,.2);}
-#wrapper .hcell.l2{background:rgba(124,92,252,.4);}
-#wrapper .hcell.l3{background:rgba(124,92,252,.65);}
-#wrapper .hcell.l4{background:var(--v);}
-#wrapper .hcell.tdy{outline:1.5px solid var(--m);outline-offset:1px;}
+.focus-label {
+  font-size: 9px;
+  color: var(--tf-text-hint);
+}
 
-/* SESSIONS */
-#wrapper .scard{border-radius:10px;padding:12px 14px;}
-#wrapper.dark .scard{background:#13131A;border:1px solid rgba(255,255,255,.07);}
-#wrapper.light .scard{background:#FFFFFF;border:1px solid rgba(80,60,20,.1);}
-#wrapper .srow{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid;}
-#wrapper.dark .srow{border-color:rgba(255,255,255,.06);}
-#wrapper.light .srow{border-color:rgba(80,60,20,.08);}
-#wrapper .srow:last-child{border-bottom:none;}
-#wrapper .sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-#wrapper .sinfo{flex:1;}
-#wrapper .sn{font-size:12.5px;font-weight:600;}
-#wrapper .sm{font-size:10px;margin-top:1px;}
-#wrapper .sdur{font-family:var(--mono);font-size:11.5px;font-weight:600;margin-left:auto;white-space:nowrap;}
-#wrapper.dark .sdur{color:#8B879E;}
-#wrapper.light .sdur{color:#6B6256;}
+.focus-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--tf-text-secondary);
+}
 
-/* TOGGLE */
-#wrapper .mtoggle{display:flex;align-items:center;justify-content:flex-end;gap:7px;padding:8px 12px 0;}
-#wrapper .mlbl{font-size:11px;font-weight:600;}
-#wrapper.dark .mlbl{color:#555;}
-#wrapper.light .mlbl{color:#AAA;}
-#wrapper .mtrack{width:40px;height:20px;border-radius:10px;position:relative;cursor:pointer;transition:background .3s;border:1px solid;}
-#wrapper.dark .mtrack{background:#1F1F28;border-color:rgba(255,255,255,.1);}
-#wrapper.light .mtrack{background:#C4B898;border-color:rgba(80,60,20,.2);}
-#wrapper .mthumb{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--v);transition:transform .3s cubic-bezier(.4,0,.2,1);}
-#wrapper.light .mthumb{transform:translateX(20px);background:#8B6B2E;}
-#wrapper .see-all{font-size:11px;font-weight:600;cursor:pointer;color:var(--v);}
-#wrapper.light .see-all{color:#5B3FD4;}
+.focus-percent {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--tf-violet);
+}
 
-/* FADE IN */
-#wrapper .fi{animation:fiA .5s ease both;}
-@keyframes fiA{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-#wrapper .fd1{animation-delay:.05s;} #wrapper .fd2{animation-delay:.1s;} #wrapper .fd3{animation-delay:.15s;}
-#wrapper .fd4{animation-delay:.2s;} #wrapper .fd5{animation-delay:.25s;} #wrapper .fd6{animation-delay:.3s;}
-#wrapper .fd7{animation-delay:.35s;} #wrapper .fd8{animation-delay:.4s;} #wrapper .fd9{animation-delay:.45s;}
+.live-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.live-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.live-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tf-mint);
+}
+
+.live-project {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--tf-mint);
+}
+
+.live-timer {
+  font-size: 28px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  margin-top: 4px;
+}
+
+.live-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(14, 207, 164, 0.2);
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.live-bar span {
+  display: block;
+  height: 100%;
+  width: 63%;
+  background: var(--tf-mint);
+}
+
+.plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.plan-xp {
+  font-size: 9px;
+  font-weight: 700;
+  color: #5b3fd4;
+  background: rgba(124, 92, 252, 0.12);
+  border: 1px solid rgba(124, 92, 252, 0.22);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.plan-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--tf-border-default);
+}
+
+.plan-row:last-child {
+  border-bottom: none;
+}
+
+.plan-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--tf-border-default);
+}
+
+.plan-check.done {
+  background: var(--tf-mint);
+  border-color: var(--tf-mint);
+}
+
+.plan-text {
+  font-size: 12px;
+}
+
+.plan-text.done {
+  text-decoration: line-through;
+  color: var(--tf-text-hint);
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tf-text-hint);
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+.stat-meta {
+  font-size: 10px;
+  color: var(--tf-text-secondary);
+}
+
+.xp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.xp-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.xp-level {
+  font-size: 10px;
+  color: var(--tf-text-secondary);
+}
+
+.xp-total {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+.xp-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(124, 92, 252, 0.15);
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.xp-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--tf-violet), #a78bfa);
+}
+
+.xp-meta {
+  font-size: 10px;
+  color: var(--tf-text-hint);
+  margin-top: 4px;
+}
+
+.challenge-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tf-text-hint);
+}
+
+.challenge-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.challenge-progress {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.challenge-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: rgba(80, 60, 20, 0.12);
+}
+
+.challenge-dot.done {
+  background: var(--tf-amber);
+}
+
+.challenge-xp {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--tf-amber);
+  margin-left: auto;
+}
+
+.habits-header {
+  margin-bottom: 6px;
+}
+
+.habit-row {
+  display: grid;
+  grid-template-columns: 1fr 24px 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--tf-border-default);
+}
+
+.habit-row:last-child {
+  border-bottom: none;
+}
+
+.habit-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.habit-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1px solid;
+}
+
+.habit-streak {
+  font-size: 10px;
+  color: var(--tf-amber);
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+.quick-start {
+  margin-top: 12px;
+}
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.quick-btn {
+  height: 60px;
+  border-radius: 10px;
+  border: 1px solid var(--tf-border-default);
+  background: var(--tf-bg-card);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.heatmap {
+  margin-top: 12px;
+}
+
+.heatmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.heatmap-title {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.heatmap-scale {
+  font-size: 9px;
+  color: var(--tf-text-hint);
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 3px;
+}
+
+.heatmap-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.heatmap-cell {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: rgba(80, 60, 20, 0.1);
+}
+
+.heatmap-cell.level-1 { background: rgba(124, 92, 252, 0.2); }
+.heatmap-cell.level-2 { background: rgba(124, 92, 252, 0.4); }
+.heatmap-cell.level-3 { background: rgba(124, 92, 252, 0.65); }
+.heatmap-cell.level-4 { background: var(--tf-violet); }
+
+.recent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.recent-title {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.link-btn {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  color: #5b3fd4;
+  cursor: pointer;
+}
+
+.recent-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--tf-border-default);
+}
+
+.recent-row:last-child {
+  border-bottom: none;
+}
+
+.recent-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.recent-meta {
+  font-size: 10px;
+  color: var(--tf-text-hint);
+}
+
+.recent-duration {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  color: var(--tf-text-secondary);
+}
+
+.insights {
+  margin-top: 12px;
+}
+
+.insight-card {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--tf-violet);
+  background: rgba(124, 92, 252, 0.08);
+  font-size: 12px;
+  color: var(--tf-text-secondary);
+}
+
+.outline-btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--tf-border-default);
+  background: transparent;
+  font-size: 11px;
+  color: var(--tf-text-secondary);
+  cursor: pointer;
+}
+
+.color-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+@media (max-width: 900px) {
+  .quick-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

@@ -66,4 +66,61 @@ class MonthlyAnalyticsTest extends TestCase
             ->assertJsonPath('data.top_project.name', $projectA->name)
             ->assertJsonPath('data.top_project.total_seconds', 10800);
     }
+
+    public function test_monthly_analytics_returns_daily_totals_and_top_projects(): void
+    {
+        $user = User::factory()->create();
+        $projectA = Project::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'Frontend build',
+            'color' => '#123456',
+        ]);
+        $projectB = Project::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'Study blocks',
+            'color' => '#654321',
+        ]);
+
+        $dayOneStart = Carbon::parse('2026-05-03 09:00:00');
+        $dayOneEnd = Carbon::parse('2026-05-03 12:00:00');
+        $dayTwoStart = Carbon::parse('2026-05-10 10:00:00');
+        $dayTwoEnd = Carbon::parse('2026-05-10 11:00:00');
+
+        TimeSession::factory()->for($user)->create([
+            'project_id' => $projectA->id,
+            'started_at' => $dayOneStart,
+            'ended_at' => $dayOneEnd,
+            'duration_seconds' => $dayOneEnd->diffInSeconds($dayOneStart, true),
+            'type' => 'timer',
+        ]);
+
+        TimeSession::factory()->for($user)->create([
+            'project_id' => $projectB->id,
+            'started_at' => $dayTwoStart,
+            'ended_at' => $dayTwoEnd,
+            'duration_seconds' => $dayTwoEnd->diffInSeconds($dayTwoStart, true),
+            'type' => 'timer',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/analytics/monthly?month=2026-05');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(31, 'data.daily_totals')
+            ->assertJsonFragment([
+                'date' => '2026-05-03',
+                'total_seconds' => 10800,
+            ])
+            ->assertJsonFragment([
+                'name' => 'Frontend build',
+                'color' => '#123456',
+                'total_seconds' => 10800,
+            ])
+            ->assertJsonFragment([
+                'date' => '2026-05-03',
+                'total_seconds' => 10800,
+            ]);
+    }
 }

@@ -1,0 +1,260 @@
+<script setup>
+import axios from 'axios';
+import { computed, onMounted, ref } from 'vue';
+import AppShell from '../Layouts/AppShell.vue';
+
+const props = defineProps({
+  navigation: {
+    type: Object,
+    default: () => ({ sections: [] }),
+  },
+});
+
+const palette = ['var(--tf-violet)', 'var(--tf-mint)', 'var(--tf-rose)', 'var(--tf-amber)', 'var(--tf-sky)', 'var(--tf-red)'];
+
+const startDate = ref(startOfWeek(new Date()));
+const habits = ref([]);
+const stats = ref({ checks_total: 0, active_habits: 0, longest_streak: 0 });
+
+const days = computed(() => {
+  const labels = [];
+  const cursor = new Date(startDate.value);
+  for (let i = 0; i < 7; i += 1) {
+    labels.push(cursor.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return labels;
+});
+
+const checksThisWeek = computed(() => stats.value.checks_total || 0);
+const activeHabits = computed(() => stats.value.active_habits || 0);
+const longestStreak = computed(() => stats.value.longest_streak || 0);
+
+const loadHabits = async () => {
+  try {
+    const start = formatDateInput(startDate.value);
+    const response = await axios.get('/api/habits/week', { params: { start } });
+    const data = response.data?.data;
+
+    if (data?.stats) {
+      stats.value = data.stats;
+    }
+
+    if (Array.isArray(data?.habits)) {
+      habits.value = data.habits.map((habit, index) => ({
+        id: habit.id,
+        name: habit.title,
+        streak: habit.streak_current,
+        color: palette[index % palette.length],
+        checks: habit.checks,
+      }));
+    }
+  } catch (error) {
+    console.warn('Habit week fetch failed', error);
+  }
+};
+
+onMounted(() => {
+  loadHabits();
+});
+
+function startOfWeek(date) {
+  const base = new Date(date);
+  const day = base.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  base.setDate(base.getDate() + diff);
+  base.setHours(0, 0, 0, 0);
+  return base;
+}
+
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+</script>
+
+<template>
+  <div class="habits-page">
+    <AppShell :navigation="props.navigation">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Habit Tracker</div>
+          <div class="page-subtitle">Keep streaks consistent all week.</div>
+        </div>
+        <button class="outline-btn" type="button">+ Add habit</button>
+      </div>
+
+      <div class="stats-row">
+        <div class="tf-card stat-card">
+          <div class="stat-label">Checks this week</div>
+          <div class="stat-value">{{ checksThisWeek }}</div>
+        </div>
+        <div class="tf-card stat-card">
+          <div class="stat-label">Active habits</div>
+          <div class="stat-value">{{ activeHabits }}</div>
+        </div>
+        <div class="tf-card stat-card">
+          <div class="stat-label">Longest streak</div>
+          <div class="stat-value">{{ longestStreak }}</div>
+        </div>
+      </div>
+
+      <div class="tf-card habit-grid">
+        <div class="grid-header">
+          <div>Habit</div>
+          <div v-for="day in days" :key="day" class="day-cell">{{ day }}</div>
+        </div>
+        <div v-if="habits.length">
+          <div v-for="habit in habits" :key="habit.id" class="habit-row">
+            <div class="habit-name">
+              <span class="habit-dot" :style="{ background: habit.color }"></span>
+              <span>{{ habit.name }}</span>
+              <span class="habit-streak">{{ habit.streak }}</span>
+            </div>
+            <div v-for="(check, index) in habit.checks" :key="index" class="check-cell">
+              <span class="check-box" :style="{ background: check ? habit.color : 'transparent', borderColor: habit.color }"></span>
+            </div>
+          </div>
+        </div>
+        <div v-else class="empty-state">No habits yet. Add one to start tracking.</div>
+      </div>
+
+      <div class="tf-card insight-card">
+        <div class="tf-section-label">Insights</div>
+        <div class="insight">Check back after 7 days for habit insights.</div>
+      </div>
+    </AppShell>
+  </div>
+</template>
+
+<style>
+.habits-page {
+  min-height: 100vh;
+  background: var(--tf-bg-page);
+  padding: 14px;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  color: var(--tf-text-primary);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.page-title {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.page-subtitle {
+  font-size: 12px;
+  color: var(--tf-text-secondary);
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tf-text-hint);
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+.habit-grid {
+  margin-top: 12px;
+}
+
+.grid-header,
+.habit-row {
+  display: grid;
+  grid-template-columns: 120px repeat(7, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.grid-header {
+  font-size: 10px;
+  color: var(--tf-text-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.habit-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.habit-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.habit-streak {
+  font-size: 10px;
+  color: var(--tf-amber);
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+.day-cell,
+.check-cell {
+  display: flex;
+  justify-content: center;
+}
+
+.check-box {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid;
+}
+
+.outline-btn {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--tf-border-default);
+  background: transparent;
+  color: var(--tf-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.insight-card {
+  margin-top: 12px;
+}
+
+.insight {
+  padding: 10px 12px;
+  border-left: 2px solid var(--tf-violet);
+  background: rgba(124, 92, 252, 0.08);
+  font-size: 12px;
+  color: var(--tf-text-secondary);
+}
+
+.empty-state {
+  font-size: 12px;
+  color: var(--tf-text-hint);
+  padding: 12px 0 6px;
+}
+</style>

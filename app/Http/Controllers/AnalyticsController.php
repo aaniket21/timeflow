@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Project;
 use App\Models\TimeSession;
 use Carbon\Carbon;
@@ -21,11 +22,35 @@ class AnalyticsController extends Controller
             ->whereDate('started_at', $date)
             ->whereNotNull('ended_at');
 
+        $sessions = (clone $baseQuery)
+            ->orderBy('started_at')
+            ->get(['id', 'project_id', 'category_id', 'started_at', 'duration_seconds']);
+
         $totalSeconds = (int) $baseQuery->sum('duration_seconds');
         $focusSessions = (int) (clone $baseQuery)->count();
+        $pomodoroCount = (int) (clone $baseQuery)->where('is_pomodoro', true)->count();
         $avgSessionSeconds = $focusSessions > 0
             ? (int) floor($totalSeconds / $focusSessions)
             : 0;
+
+        $hourlyTotals = array_fill(0, 24, 0);
+        $longestSessionSeconds = 0;
+
+        foreach ($sessions as $session) {
+            $hour = Carbon::parse($session->started_at)->hour;
+            $hourlyTotals[$hour] += (int) $session->duration_seconds;
+            $longestSessionSeconds = max($longestSessionSeconds, (int) $session->duration_seconds);
+        }
+
+        $hourlyBreakdown = [];
+        for ($hour = 0; $hour < 24; $hour++) {
+            $hourlyBreakdown[] = [
+                'hour' => $hour,
+                'total_seconds' => (int) $hourlyTotals[$hour],
+            ];
+        }
+
+        $sessionDisplay = $this->mapSessionDisplay($sessions);
 
         return response()->json([
             'success' => true,
@@ -34,6 +59,10 @@ class AnalyticsController extends Controller
                 'total_seconds' => $totalSeconds,
                 'focus_sessions' => $focusSessions,
                 'avg_session_seconds' => $avgSessionSeconds,
+                'pomodoro_count' => $pomodoroCount,
+                'longest_session_seconds' => $longestSessionSeconds,
+                'hourly_breakdown' => $hourlyBreakdown,
+                'sessions' => $sessionDisplay,
             ],
         ]);
     }
@@ -49,7 +78,7 @@ class AnalyticsController extends Controller
             ->where('user_id', $user->id)
             ->whereNotNull('ended_at')
             ->whereBetween('started_at', [$startDate, $endDate])
-            ->get(['started_at', 'duration_seconds']);
+            ->get(['started_at', 'duration_seconds', 'project_id', 'category_id']);
         
         $dayTotals = [];
         
@@ -76,6 +105,22 @@ class AnalyticsController extends Controller
                 $worstDay = ['date' => $day, 'total_seconds' => $seconds];
             }
         }
+
+        $dailyGoalSeconds = (int) round($user->daily_goal_hours * 3600);
+        $dailyTotals = [];
+        $cursor = $startDate->copy();
+
+        for ($i = 0; $i < 7; $i++) {
+            $dayKey = $cursor->toDateString();
+            $dailyTotals[] = [
+                'date' => $dayKey,
+                'total_seconds' => (int) ($dayTotals[$dayKey] ?? 0),
+                'goal_seconds' => $dailyGoalSeconds,
+            ];
+            $cursor->addDay();
+        }
+
+        $categoryBreakdown = $this->buildCategoryBreakdown($sessions, $totalSeconds);
         
         return response()->json([
             'success' => true,
@@ -87,6 +132,8 @@ class AnalyticsController extends Controller
                 'avg_daily_seconds' => $avgDailySeconds,
                 'best_day' => $bestDay,
                 'worst_day' => $worstDay,
+                'daily_totals' => $dailyTotals,
+                'category_breakdown' => $categoryBreakdown,
             ],
         ]);
     }
@@ -162,6 +209,22 @@ class AnalyticsController extends Controller
             }
         }
 
+        $dailyTotals = [];
+        $cursor = $monthStart->copy();
+        $daysInMonth = $monthStart->daysInMonth;
+
+        for ($i = 0; $i < $daysInMonth; $i++) {
+            $dayKey = $cursor->toDateString();
+            $dailyTotals[] = [
+                'date' => $dayKey,
+                'total_seconds' => (int) ($dayTotals[$dayKey] ?? 0),
+            ];
+            $cursor->addDay();
+        }
+
+        $topProjects = $this->buildTopProjects($projectTotals);
+        $streakDays = $this->buildStreakDays($dayTotals);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -172,6 +235,54 @@ class AnalyticsController extends Controller
                 'best_day' => $bestDay,
                 'worst_day' => $worstDay,
                 'top_project' => $topProject,
+                'daily_totals' => $dailyTotals,
+                'top_projects' => $topProjects,
+                'streak_days' => $streakDays,
+            ],
+        ]);
+    }
+
+    public function heatmap(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $endDate = Carbon::parse($request->query('end', now()->toDateString()))->endOfDay();
+        $startDate = $endDate->copy()->subDays(13)->startOfDay();
+
+        $sessions = TimeSession::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('ended_at')
+            ->whereBetween('started_at', [$startDate, $endDate])
+            ->get(['started_at', 'duration_seconds']);
+
+        $dayTotals = [];
+
+        foreach ($sessions as $session) {
+            $dayKey = Carbon::parse($session->started_at)->toDateString();
+            $dayTotals[$dayKey] = ($dayTotals[$dayKey] ?? 0) + (int) $session->duration_seconds;
+        }
+
+        $days = [];
+        $cursor = $startDate->copy();
+
+        for ($i = 0; $i < 14; $i++) {
+            $dayKey = $cursor->toDateString();
+            $total = (int) ($dayTotals[$dayKey] ?? 0);
+
+            $days[] = [
+                'date' => $dayKey,
+                'total_seconds' => $total,
+                'level' => $this->heatmapLevel($total),
+            ];
+
+            $cursor->addDay();
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+                'days' => $days,
             ],
         ]);
     }
@@ -240,5 +351,189 @@ class AnalyticsController extends Controller
             'success' => true,
             'data' => $insights,
         ]);
+    }
+
+    private function mapSessionDisplay($sessions): array
+    {
+        $projectIds = $sessions->pluck('project_id')->filter()->unique();
+        $projects = $projectIds->isNotEmpty()
+            ? Project::query()
+                ->whereIn('id', $projectIds)
+                ->get(['id', 'name', 'color', 'category_id'])
+                ->keyBy('id')
+            : collect();
+
+        $categoryIds = $sessions->pluck('category_id')->filter();
+        if ($projects->isNotEmpty()) {
+            $categoryIds = $categoryIds->merge($projects->pluck('category_id')->filter());
+        }
+
+        $categoryIds = $categoryIds->unique();
+        $categories = $categoryIds->isNotEmpty()
+            ? Category::query()
+                ->whereIn('id', $categoryIds)
+                ->get(['id', 'name', 'color'])
+                ->keyBy('id')
+            : collect();
+
+        return $sessions->map(function (TimeSession $session) use ($projects, $categories) {
+            $project = $session->project_id ? $projects->get($session->project_id) : null;
+            $category = $session->category_id ? $categories->get($session->category_id) : null;
+            $projectCategory = $project && $project->category_id
+                ? $categories->get($project->category_id)
+                : null;
+
+            $label = $project->name ?? $category->name ?? 'Session';
+            $categoryLabel = $category->name ?? ($projectCategory?->name ?? 'General');
+            $color = $project->color ?? $category->color ?? '#9ca3af';
+
+            return [
+                'id' => $session->id,
+                'label' => $label,
+                'category' => $categoryLabel,
+                'color' => $color,
+                'started_at' => Carbon::parse($session->started_at)->toIso8601String(),
+                'duration_seconds' => (int) $session->duration_seconds,
+            ];
+        })->values()->all();
+    }
+
+    private function buildCategoryBreakdown($sessions, int $totalSeconds): array
+    {
+        $projectIds = $sessions->pluck('project_id')->filter()->unique();
+        $projects = $projectIds->isNotEmpty()
+            ? Project::query()
+                ->whereIn('id', $projectIds)
+                ->get(['id', 'category_id'])
+                ->keyBy('id')
+            : collect();
+
+        $categoryIds = $sessions->pluck('category_id')->filter();
+        if ($projects->isNotEmpty()) {
+            $categoryIds = $categoryIds->merge($projects->pluck('category_id')->filter());
+        }
+
+        $categoryIds = $categoryIds->unique();
+        $categories = $categoryIds->isNotEmpty()
+            ? Category::query()
+                ->whereIn('id', $categoryIds)
+                ->get(['id', 'name', 'color'])
+                ->keyBy('id')
+            : collect();
+
+        $categoryTotals = [];
+
+        foreach ($sessions as $session) {
+            $project = $session->project_id ? $projects->get($session->project_id) : null;
+            $categoryId = $session->category_id ?? ($project?->category_id ?? null);
+
+            if (! $categoryId) {
+                $categoryTotals['uncategorized'] = ($categoryTotals['uncategorized'] ?? 0) + (int) $session->duration_seconds;
+                continue;
+            }
+
+            $categoryTotals[$categoryId] = ($categoryTotals[$categoryId] ?? 0) + (int) $session->duration_seconds;
+        }
+
+        arsort($categoryTotals);
+
+        $breakdown = [];
+        foreach ($categoryTotals as $categoryId => $seconds) {
+            if ($categoryId === 'uncategorized') {
+                $name = 'Uncategorized';
+                $color = '#9ca3af';
+                $id = null;
+            } else {
+                $category = $categories->get($categoryId);
+                if (! $category) {
+                    continue;
+                }
+                $name = $category->name;
+                $color = $category->color;
+                $id = $category->id;
+            }
+
+            $breakdown[] = [
+                'id' => $id,
+                'name' => $name,
+                'color' => $color,
+                'total_seconds' => (int) $seconds,
+                'percent' => $totalSeconds > 0 ? (int) round(($seconds / $totalSeconds) * 100) : 0,
+            ];
+        }
+
+        return $breakdown;
+    }
+
+    private function buildTopProjects(array $projectTotals): array
+    {
+        if ($projectTotals === []) {
+            return [];
+        }
+
+        arsort($projectTotals);
+        $topProjects = array_slice($projectTotals, 0, 3, true);
+        $projectIds = array_keys($topProjects);
+
+        $projects = Project::query()
+            ->whereIn('id', $projectIds)
+            ->get(['id', 'name', 'color'])
+            ->keyBy('id');
+
+        $data = [];
+        foreach ($topProjects as $projectId => $seconds) {
+            $project = $projects->get($projectId);
+            if (! $project) {
+                continue;
+            }
+
+            $data[] = [
+                'id' => $project->id,
+                'name' => $project->name,
+                'color' => $project->color,
+                'total_seconds' => (int) $seconds,
+            ];
+        }
+
+        return $data;
+    }
+
+    private function buildStreakDays(array $dayTotals): array
+    {
+        $data = [];
+
+        foreach ($dayTotals as $date => $seconds) {
+            if ((int) $seconds <= 0) {
+                continue;
+            }
+
+            $data[] = [
+                'date' => $date,
+                'total_seconds' => (int) $seconds,
+            ];
+        }
+
+        return $data;
+    }
+
+    private function heatmapLevel(int $totalSeconds): int
+    {
+        if ($totalSeconds <= 0) {
+            return 0;
+        }
+
+        if ($totalSeconds < 3600) {
+            return 1;
+        }
+
+        if ($totalSeconds < 7200) {
+            return 2;
+        }
+
+        if ($totalSeconds < 14400) {
+            return 3;
+        }
+
+        return 4;
     }
 }

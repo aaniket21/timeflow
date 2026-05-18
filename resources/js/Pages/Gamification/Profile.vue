@@ -1,76 +1,134 @@
 <script setup>
+import axios from 'axios';
+import { computed, onMounted, ref } from 'vue';
+import AppShell from '../../Layouts/AppShell.vue';
+
 const props = defineProps({
-  profile: {
+  navigation: {
     type: Object,
-    default: () => ({
-      xp_total: 1240,
-      level: 4,
-      level_title: 'Dedicated',
-      next_level_xp: 1600,
-      streak_current: 14,
-      streak_longest: 21,
-      badge_count: 12,
-      last_active_date: '2026-05-18',
-    }),
+    default: () => ({ sections: [] }),
   },
-  celebration: {
-    type: Object,
-    default: () => ({
-      title: 'Level up!',
-      detail: 'You are 360 XP away from Focused 5.',
+});
+
+const profile = ref({
+  xp_total: 0,
+  level: 1,
+  next_level_xp: 0,
+  level_progress: 0,
+  streak_current: 0,
+  streak_longest: 0,
+  badge_count: 0,
+  last_active_date: null,
+});
+
+const levelTitles = {
+  1: 'Starter',
+  2: 'Focused',
+  3: 'Consistent',
+  4: 'Dedicated',
+  5: 'Relentless',
+  6: 'Flow State',
+  7: 'Deep Worker',
+  8: 'TimeFlow Master',
+};
+
+const levelTitle = computed(() => levelTitles[profile.value.level] || 'Focused');
+const levelProgress = computed(() => {
+  const progress = Number(profile.value.level_progress);
+  if (!Number.isNaN(progress) && progress > 0) {
+    return Math.min(1, Math.max(0, progress));
+  }
+  const nextLevel = Number(profile.value.next_level_xp || 0);
+  if (nextLevel <= 0) return 0;
+  return Math.min(1, Math.max(0, Number(profile.value.xp_total || 0) / nextLevel));
+});
+
+const celebration = computed(() => {
+  const nextLevel = Number(profile.value.next_level_xp || 0);
+  if (nextLevel <= 0) {
+    return {
+      title: 'Max level',
+      detail: 'You have reached the highest level so far.',
       action: 'Keep the streak alive',
-    }),
-  },
+    };
+  }
+
+  const remaining = Math.max(0, nextLevel - Number(profile.value.xp_total || 0));
+  return {
+    title: 'Level up!',
+    detail: `You are ${remaining} XP away from ${levelTitle.value} ${Number(profile.value.level || 1) + 1}.`,
+    action: 'Keep the streak alive',
+  };
+});
+
+const loadProfile = async () => {
+  try {
+    const response = await axios.get('/api/gamification/profile');
+    const data = response.data?.data;
+    if (data) {
+      profile.value = { ...profile.value, ...data };
+    }
+  } catch (error) {
+    console.warn('Gamification profile fetch failed', error);
+  }
+};
+
+onMounted(() => {
+  loadProfile();
 });
 </script>
 
 <template>
-  <div class="profile-shell">
-    <header class="hero">
-      <div>
-        <div class="overline">Gamification Profile</div>
-        <h1>Growth Snapshot</h1>
-        <p>Track your momentum, streak health, and unlocked rewards.</p>
-      </div>
-      <div class="level-card">
-        <div class="level-title">{{ props.profile.level_title }}</div>
-        <div class="level-xp">Lv. {{ props.profile.level }}</div>
-        <div class="level-bar">
-          <div class="level-fill" :style="{ width: ((props.profile.xp_total / props.profile.next_level_xp) * 100).toFixed(0) + '%' }"></div>
-        </div>
-        <div class="level-meta">
-          <span>{{ props.profile.xp_total }} XP</span>
-          <span>{{ props.profile.next_level_xp }} next</span>
-        </div>
-      </div>
-    </header>
+  <div class="profile-page">
+    <AppShell :navigation="props.navigation" :xp-total="profile.xp_total" :streak-current="profile.streak_current">
+      <div class="profile-shell">
+        <header class="hero">
+          <div>
+            <div class="overline">Gamification Profile</div>
+            <h1>Growth Snapshot</h1>
+            <p>Track your momentum, streak health, and unlocked rewards.</p>
+          </div>
+          <div class="level-card">
+            <div class="level-title">{{ levelTitle }}</div>
+            <div class="level-xp">Lv. {{ profile.level }}</div>
+            <div class="level-bar">
+              <div class="level-fill" :style="{ width: (levelProgress * 100).toFixed(0) + '%' }"></div>
+            </div>
+            <div class="level-meta">
+              <span>{{ profile.xp_total }} XP</span>
+              <span>{{ profile.next_level_xp || 'Max' }} next</span>
+            </div>
+          </div>
+        </header>
 
-    <section class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">Current streak</div>
-        <div class="stat-value">{{ props.profile.streak_current }} days</div>
-        <div class="stat-sub">Longest: {{ props.profile.streak_longest }} days</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Badges unlocked</div>
-        <div class="stat-value">{{ props.profile.badge_count }}</div>
-        <div class="stat-sub">Keep collecting milestones</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Last active</div>
-        <div class="stat-value">{{ props.profile.last_active_date }}</div>
-        <div class="stat-sub">Stay in the loop</div>
-      </div>
-    </section>
+        <section class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Current streak</div>
+            <div class="stat-value">{{ profile.streak_current }} days</div>
+            <div class="stat-sub">Longest: {{ profile.streak_longest }} days</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Badges unlocked</div>
+            <div class="stat-value">{{ profile.badge_count }}</div>
+            <div class="stat-sub">Keep collecting milestones</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Last active</div>
+            <div class="stat-value">{{ profile.last_active_date || '-' }}</div>
+            <div class="stat-sub">Stay in the loop</div>
+          </div>
+        </section>
 
-    <section class="celebration">
-      <div class="burst"></div>
-      <div>
-        <div class="celebration-title">{{ props.celebration.title }}</div>
-        <div class="celebration-detail">{{ props.celebration.detail }}</div>
-        <div class="celebration-action">{{ props.celebration.action }}</div>
+        <section class="celebration">
+          <div class="burst"></div>
+          <div>
+            <div class="celebration-title">{{ celebration.title }}</div>
+            <div class="celebration-detail">{{ celebration.detail }}</div>
+            <div class="celebration-action">{{ celebration.action }}</div>
+          </div>
+        </section>
       </div>
-    </section>
+    </AppShell>
   </div>
 </template>
 

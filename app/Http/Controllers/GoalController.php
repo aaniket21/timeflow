@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Goal;
 use App\Models\HabitLog;
+use App\Models\TimeSession;
 use App\Models\XpTransaction;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,175 @@ class GoalController extends Controller
         return response()->json([
             'success' => true,
             'data' => $query->orderByDesc('created_at')->get(),
+        ]);
+    }
+
+    public function summary(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $date = Carbon::parse($request->query('date', now()->toDateString()));
+        $dateString = $date->toDateString();
+        $weekStart = $date->copy()->startOfWeek();
+        $weekEnd = $date->copy()->endOfWeek();
+
+        $dailySeconds = (int) TimeSession::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('ended_at')
+            ->whereDate('started_at', $dateString)
+            ->sum('duration_seconds');
+
+        $weeklySeconds = (int) TimeSession::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('ended_at')
+            ->whereBetween('started_at', [$weekStart, $weekEnd])
+            ->sum('duration_seconds');
+
+        $goals = Goal::query()
+            ->where('user_id', $user->id)
+            ->where('active', true)
+            ->whereIn('type', ['daily_hours', 'weekly_hours', 'focus_hours'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $data = $goals->map(function (Goal $goal) use ($dailySeconds, $weeklySeconds) {
+            $target = (float) $goal->target_value;
+            $currentSeconds = $goal->type === 'weekly_hours' ? $weeklySeconds : $dailySeconds;
+            $currentValue = round($currentSeconds / 3600, 2);
+            $progress = $target > 0 ? (int) round(($currentValue / $target) * 100) : 0;
+
+            return [
+                'id' => $goal->id,
+                'title' => $goal->title,
+                'type' => $goal->type,
+                'target_value' => $target,
+                'current_value' => $currentValue,
+                'progress_percent' => $progress,
+                'hit' => $target > 0 ? $currentValue >= $target : false,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'date' => $dateString,
+                'week_start' => $weekStart->toDateString(),
+                'week_end' => $weekEnd->toDateString(),
+                'goals' => $data,
+            ],
+        ]);
+    }
+
+    public function weekHabits(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $start = Carbon::parse($request->query('start', now()->startOfWeek()->toDateString()))->startOfDay();
+        $end = $start->copy()->addDays(6)->endOfDay();
+        $streakDate = Carbon::parse($request->query('date', now()->toDateString()))->toDateString();
+
+        $habits = Goal::query()
+            ->where('user_id', $user->id)
+            ->where('type', 'habit')
+            ->where('active', true)
+            ->orderBy('created_at')
+            ->get();
+
+        $habitIds = $habits->pluck('id');
+        $logs = $habitIds->isNotEmpty()
+            ? HabitLog::query()
+                ->where('user_id', $user->id)
+                ->whereIn('goal_id', $habitIds)
+                ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+                ->get()
+            : collect();
+
+        $logMap = [];
+        foreach ($logs as $log) {
+            $dateKey = $log->date instanceof Carbon ? $log->date->toDateString() : (string) $log->date;
+            $logMap[$log->goal_id][$dateKey] = (bool) $log->done;
+        }
+
+        $checksTotal = 0;
+        $longestStreak = 0;
+
+        $data = $habits->map(function (Goal $habit) use (&$checksTotal, &$longestStreak, $logMap, $start, $streakDate, $user) {
+            $checks = [];
+            $cursor = $start->copy();
+
+            for ($i = 0; $i < 7; $i++) {
+                $dateKey = $cursor->toDateString();
+                $done = (bool) ($logMap[$habit->id][$dateKey] ?? false);
+                $checks[] = $done ? 1 : 0;
+                if ($done) {
+                    $checksTotal++;
+                }
+                $cursor->addDay();
+            }
+
+            $streak = $this->calculateHabitStreak($user->id, $habit->id, $streakDate);
+            $longestStreak = max($longestStreak, $streak);
+
+            return [
+                'id' => $habit->id,
+                'title' => $habit->title,
+                'checks' => $checks,
+                'streak_current' => $streak,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'habits' => $data,
+                'stats' => [
+                    'active_habits' => $habits->count(),
+                    'checks_total' => $checksTotal,
+                    'longest_streak' => $longestStreak,
+                ],
+            ],
+        ]);
+    }
+
+    public function todayHabits(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $date = Carbon::parse($request->query('date', now()->toDateString()))->toDateString();
+
+        $habits = Goal::query()
+            ->where('user_id', $user->id)
+            ->where('type', 'habit')
+            ->where('active', true)
+            ->orderBy('created_at')
+            ->get();
+
+        $logs = HabitLog::query()
+            ->where('user_id', $user->id)
+            ->whereIn('goal_id', $habits->pluck('id'))
+                ->whereDate('date', $date)
+            ->get()
+            ->keyBy('goal_id');
+
+        $data = $habits->map(function (Goal $habit) use ($logs, $date, $user) {
+            $log = $logs->get($habit->id);
+            $done = $log ? (bool) $log->done : false;
+            $streak = $this->calculateHabitStreak($user->id, $habit->id, $date);
+
+            return [
+                'id' => $habit->id,
+                'title' => $habit->title,
+                'target_value' => (float) $habit->target_value,
+                'done' => $done,
+                'streak_current' => $streak,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'date' => $date,
+                'habits' => $data,
+            ],
         ]);
     }
 
@@ -228,7 +398,7 @@ class GoalController extends Controller
             $done = HabitLog::query()
                 ->where('user_id', $userId)
                 ->where('goal_id', $goalId)
-                ->where('date', $cursor->toDateString())
+                    ->whereDate('date', $cursor->toDateString())
                 ->where('done', true)
                 ->exists();
 

@@ -7,7 +7,9 @@ use App\Http\Requests\StopSessionRequest;
 use App\Http\Requests\StoreSessionRequest;
 use App\Http\Requests\UpdateSessionRequest;
 use App\Models\Badge;
+use App\Models\Category;
 use App\Models\DailyChallenge;
+use App\Models\Project;
 use App\Models\TimeSession;
 use App\Models\UserBadge;
 use App\Models\UserChallengeCompletion;
@@ -540,6 +542,67 @@ class SessionController extends Controller
         ]);
     }
 
+    public function recent(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $limit = (int) $request->query('limit', 5);
+        $limit = max(1, min(20, $limit));
+
+        $sessions = TimeSession::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('ended_at')
+            ->orderByDesc('started_at')
+            ->limit($limit)
+            ->get(['id', 'project_id', 'category_id', 'started_at', 'duration_seconds']);
+
+        $projectIds = $sessions->pluck('project_id')->filter()->unique();
+        $projects = $projectIds->isNotEmpty()
+            ? Project::query()
+                ->whereIn('id', $projectIds)
+                ->get(['id', 'name', 'color', 'category_id'])
+                ->keyBy('id')
+            : collect();
+
+        $categoryIds = $sessions->pluck('category_id')->filter();
+        if ($projects->isNotEmpty()) {
+            $categoryIds = $categoryIds->merge($projects->pluck('category_id')->filter());
+        }
+
+        $categoryIds = $categoryIds->unique();
+        $categories = $categoryIds->isNotEmpty()
+            ? Category::query()
+                ->whereIn('id', $categoryIds)
+                ->get(['id', 'name', 'color'])
+                ->keyBy('id')
+            : collect();
+
+        $data = $sessions->map(function (TimeSession $session) use ($projects, $categories) {
+            $project = $session->project_id ? $projects->get($session->project_id) : null;
+            $category = $session->category_id ? $categories->get($session->category_id) : null;
+            $projectCategory = $project && $project->category_id
+                ? $categories->get($project->category_id)
+                : null;
+
+            $label = $project->name ?? $category->name ?? 'Session';
+            $categoryLabel = $category->name ?? ($projectCategory?->name ?? 'General');
+            $color = $project->color ?? $category->color ?? '#9ca3af';
+
+            return [
+                'id' => $session->id,
+                'label' => $label,
+                'category' => $categoryLabel,
+                'color' => $color,
+                'duration_seconds' => (int) ($session->duration_seconds ?? 0),
+                'started_at' => Carbon::parse($session->started_at)->toIso8601String(),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
     public function active(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -548,6 +611,31 @@ class SessionController extends Controller
             ->whereNull('ended_at')
             ->latest('started_at')
             ->first();
+
+        $project = null;
+        $category = null;
+        $projectCategory = null;
+
+        if ($session && $session->project_id) {
+            $project = Project::query()->find($session->project_id, ['id', 'name', 'color', 'category_id']);
+            if ($project && $project->category_id) {
+                $projectCategory = Category::query()->find($project->category_id, ['id', 'name', 'color']);
+            }
+        }
+
+        if ($session && $session->category_id) {
+            $category = Category::query()->find($session->category_id, ['id', 'name', 'color']);
+        }
+
+        $label = $session
+            ? ($project->name ?? $category->name ?? 'Session')
+            : null;
+        $categoryLabel = $session
+            ? ($category->name ?? ($projectCategory?->name ?? 'General'))
+            : null;
+        $color = $session
+            ? ($project->color ?? $category->color)
+            : null;
 
         return response()->json([
             'success' => true,
@@ -563,6 +651,9 @@ class SessionController extends Controller
                         'notes' => $session->notes,
                         'is_pomodoro' => $session->is_pomodoro,
                         'type' => $session->type,
+                        'label' => $label,
+                        'category' => $categoryLabel,
+                        'color' => $color,
                     ]
                     : null,
             ],

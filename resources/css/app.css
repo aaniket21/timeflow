@@ -1,3 +1,314 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+	:root {
+		--tf-bg-page: #F5F0E8;
+		--tf-bg-card: #FFFFFF;
+		--tf-bg-card-alt: #FAF7F2;
+		--tf-bg-sidebar: #F0EAE0;
+		--tf-bg-hover: #FAF7F2;
+		--tf-border-default: rgba(80, 60, 20, 0.10);
+		--tf-border-emphasis: rgba(80, 60, 20, 0.18);
+		--tf-border-strong: rgba(80, 60, 20, 0.28);
+		--tf-text-primary: #1C1917;
+		--tf-text-secondary: #6B6256;
+		--tf-text-hint: #A89E8E;
+		--tf-violet: #7C5CFC;
+		--tf-mint: #0ECFA4;
+		--tf-amber: #F5A623;
+		--tf-rose: #F06292;
+		--tf-sky: #38BDF8;
+		--tf-red: #EF4444;
+	}
+
+	.dark {
+		--tf-bg-page: #0C0C10;
+		--tf-bg-card: #13131A;
+		--tf-bg-card-alt: #18181F;
+		--tf-bg-sidebar: #13131A;
+		--tf-bg-hover: #1F1F28;
+		--tf-border-default: rgba(255, 255, 255, 0.07);
+		--tf-border-emphasis: rgba(255, 255, 255, 0.12);
+		--tf-border-strong: rgba(255, 255, 255, 0.18);
+		--tf-text-primary: #EEEAF4;
+		--tf-text-secondary: #8B879E;
+		--tf-text-hint: #3E3C4A;
+	}
+}
+
+@layer components {
+	.tf-shell {
+		display: grid;
+		grid-template-columns: 190px 1fr;
+		grid-template-rows: 48px 1fr;
+		min-height: 700px;
+		border-radius: 14px;
+		border: 1px solid var(--tf-border-default);
+		overflow: hidden;
+		background: var(--tf-bg-page);
+	}
+
+	.tf-topbar {
+		grid-column: 1 / -1;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 18px;
+		height: 48px;
+		background: var(--tf-bg-sidebar);
+		border-bottom: 1px solid var(--tf-border-default);
+	}
+
+	.tf-logo {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		font-size: 15px;
+		font-weight: 800;
+		letter-spacing: -0.4px;
+		color: var(--tf-text-primary);
+	}
+
+	.tf-logo-orb {
+		width: 26px;
+		height: 26px;
+		border-radius: 7px;
+		background: var(--tf-violet);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: #fff;
+		font-size: 13px;
+	}
+
+	.tf-topbar-right {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+	}
+
+	.tf-xp-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 10px;
+		border-radius: 999px;
+		font-size: 11px;
+		font-weight: 700;
+		font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+		color: #5b3fd4;
+		background: rgba(124, 92, 252, 0.12);
+		border: 1px solid rgba(124, 92, 252, 0.22);
+	}
+
+	.tf-icon-button {
+		width: 26px;
+		height: 26px;
+		border-radius: 7px;
+		border: 1px solid transparent;
+		background: transparent;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--tf-text-secondary);
+		cursor: pointer;
+		position: relative;
+		transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+	}
+
+	.tf-icon-button:hover {
+		background: var(--tf-bg-hover);
+		color: var(--tf-text-primary);
+	}
+
+	.tf-badge-dot {
+		position: absolute;
+		top: 4px;
+		right: 4px;
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: var(--tf-rose);
+	}
+
+	.tf-avatar {
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 11px;
+		font-weight: 800;
+		color: #fff;
+		background: linear-gradient(135deg, var(--tf-violet), var(--tf-mint));
+	}
+
+	.tf-sidebar {
+		padding: 12px 9px;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		background: var(--tf-bg-sidebar);
+		border-right: 1px solid var(--tf-border-default);
+	}
+
+	.tf-nav-group {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+	}
+
+	.tf-nav-section {
+		font-size: 9px;
+		font-weight: 700;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		padding: 8px 8px 3px;
+		color: var(--tf-text-hint);
+	}
+
+	.tf-nav-item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 7px 9px;
+		border-radius: 8px;
+		font-size: 12px;
+		font-weight: 500;
+		border: 1px solid transparent;
+		background: transparent;
+		color: var(--tf-text-secondary);
+		cursor: pointer;
+		transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+	}
+
+	.tf-nav-item:hover {
+		background: var(--tf-bg-hover);
+		color: var(--tf-text-primary);
+	}
+
+	.tf-nav-item.active {
+		background: rgba(124, 92, 252, 0.12);
+		border-color: rgba(124, 92, 252, 0.22);
+		color: #5b3fd4;
+	}
+
+	.tf-nav-count {
+		margin-left: auto;
+		font-size: 9px;
+		font-weight: 700;
+		padding: 1px 5px;
+		border-radius: 8px;
+		background: var(--tf-violet);
+		color: #fff;
+	}
+
+	.tf-streak-box {
+		margin-top: auto;
+		padding: 12px 10px;
+		border-radius: 10px;
+		text-align: center;
+		background: var(--tf-bg-card-alt);
+		border: 1px solid var(--tf-border-default);
+	}
+
+	.tf-streak-icon {
+		font-size: 18px;
+		color: var(--tf-amber);
+	}
+
+	.tf-streak-value {
+		font-size: 22px;
+		font-weight: 700;
+		font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+		color: var(--tf-amber);
+	}
+
+	.tf-streak-label {
+		font-size: 10px;
+		color: var(--tf-text-hint);
+	}
+
+	.tf-streak-dots {
+		display: flex;
+		justify-content: center;
+		gap: 3px;
+		margin-top: 8px;
+	}
+
+	.tf-streak-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: rgba(80, 60, 20, 0.15);
+	}
+
+	.tf-streak-dot.on {
+		background: var(--tf-amber);
+		box-shadow: 0 0 4px rgba(245, 166, 35, 0.5);
+	}
+
+	.tf-streak-dot.now {
+		background: var(--tf-mint);
+		box-shadow: 0 0 4px rgba(14, 207, 164, 0.5);
+	}
+
+	.tf-main {
+		padding: 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		overflow-y: auto;
+		background: var(--tf-bg-page);
+	}
+
+	.tf-card {
+		border-radius: 11px;
+		padding: 13px 15px;
+		background: var(--tf-bg-card);
+		border: 1px solid var(--tf-border-default);
+		transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+	}
+
+	.tf-section-label {
+		font-size: 9.5px;
+		font-weight: 700;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		color: var(--tf-text-hint);
+		margin-bottom: 6px;
+	}
+
+	.tf-date-badge {
+		font-size: 11px;
+		font-weight: 500;
+		padding: 3px 9px;
+		border-radius: 14px;
+		background: var(--tf-bg-sidebar);
+		border: 1px solid var(--tf-border-default);
+		color: var(--tf-text-secondary);
+	}
+}
+
+@media (max-width: 980px) {
+	.tf-shell {
+		grid-template-columns: 1fr;
+		grid-template-rows: 48px auto 1fr;
+	}
+
+	.tf-sidebar {
+		grid-column: 1 / -1;
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap: 8px;
+		border-right: none;
+		border-bottom: 1px solid var(--tf-border-default);
+	}
+
+	.tf-streak-box {
+		width: 100%;
+	}
+}
