@@ -19,6 +19,7 @@ class GenerateReportRequest extends FormRequest
             'date_to' => ['required', 'date', 'after_or_equal:date_from'],
             'project_ids' => ['nullable', 'array'],
             'project_ids.*' => ['integer', 'exists:projects,id'],
+            'format' => ['nullable', 'in:pdf,csv'],
         ];
     }
 }

@@ -23,6 +23,11 @@ class Project extends Model
         'archived',
     ];
 
+    protected $casts = [
+        'budget_hours' => 'float',
+        'archived' => 'boolean',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
