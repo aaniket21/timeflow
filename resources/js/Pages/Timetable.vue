@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import ModalBase from '../Components/ModalBase.vue';
 
 const props = defineProps({
   navigation: {
@@ -17,6 +18,9 @@ const hours = Array.from({ length: 18 }, (_, index) => gridStartHour + index);
 const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const blocks = ref([]);
+const insightText = ref('Insights will appear after more sessions are logged.');
+const showBlockModal = ref(false);
+const blockForm = ref({ title: '', type: 'study', start_time: '09:00', end_time: '10:00', days_of_week: [], color: '#7C5CFC' });
 
 const displayBlocks = computed(() => {
   const items = [];
@@ -67,7 +71,20 @@ const loadBlocks = async () => {
 
 onMounted(() => {
   loadBlocks();
+  loadInsight();
 });
+
+const loadInsight = async () => {
+  try {
+    const res = await axios.get('/api/analytics/insights');
+    const data = res.data?.data;
+    if (Array.isArray(data) && data.length > 0) {
+      insightText.value = data[0].message;
+    }
+  } catch {
+    // Insights are optional
+  }
+};
 
 function parseTime(value) {
   const [hoursValue, minutesValue] = value.split(':').map((part) => Number(part));
@@ -92,6 +109,36 @@ function addDays(date, days) {
 function formatDateLabel(date) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
+
+const prevWeek = () => {
+  startDate.value = addDays(startDate.value, -7);
+  loadBlocks();
+};
+
+const nextWeek = () => {
+  startDate.value = addDays(startDate.value, 7);
+  loadBlocks();
+};
+
+const startDate = ref(startOfWeek(new Date()));
+
+const createBlock = async () => {
+  try {
+    await axios.post('/api/timetable/blocks', blockForm.value);
+    showBlockModal.value = false;
+    blockForm.value = { title: '', type: 'study', start_time: '09:00', end_time: '10:00', days_of_week: [], color: '#7C5CFC' };
+    loadBlocks();
+    if (window.TimeflowToast) window.TimeflowToast.success('Block added');
+  } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to add block');
+  }
+};
+
+const toggleDay = (dayNum) => {
+  const idx = blockForm.value.days_of_week.indexOf(dayNum);
+  if (idx >= 0) blockForm.value.days_of_week.splice(idx, 1);
+  else blockForm.value.days_of_week.push(dayNum);
+};
 </script>
 
 <template>
@@ -102,13 +149,13 @@ function formatDateLabel(date) {
           <div class="page-title">Timetable</div>
           <div class="page-subtitle">Plan the week with smart blocks.</div>
         </div>
-        <button class="outline-btn" type="button">+ Add block</button>
+        <button class="outline-btn" type="button" @click="showBlockModal = true">+ Add block</button>
       </div>
 
       <div class="week-nav">
-        <button class="nav-btn" type="button">&lt; Week</button>
+        <button class="nav-btn" type="button" @click="prevWeek">&lt; Week</button>
         <div class="tf-date-badge">{{ weekLabel }}</div>
-        <button class="nav-btn" type="button">Week &gt;</button>
+        <button class="nav-btn" type="button" @click="nextWeek">Week &gt;</button>
       </div>
 
       <div class="tf-card timetable-grid">
@@ -140,13 +187,47 @@ function formatDateLabel(date) {
 
       <div class="tf-card insight-card">
         <div class="tf-section-label">Smart insights</div>
-        <div class="insight">Your most consistent study block is Thursday at 1 PM.</div>
+        <div class="insight">{{ insightText }}</div>
       </div>
+
+      <ModalBase :open="showBlockModal" title="Add Timetable Block" @close="showBlockModal = false">
+        <div class="field">
+          <label class="field-label">Title</label>
+          <input class="text-input" type="text" v-model="blockForm.title" placeholder="e.g. Physics Revision" />
+        </div>
+        <div class="field">
+          <label class="field-label">Type</label>
+          <select class="text-input" v-model="blockForm.type">
+            <option value="study">Study</option>
+            <option value="break">Break</option>
+            <option value="class">Class</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Start time</label>
+          <input class="text-input" type="time" v-model="blockForm.start_time" />
+        </div>
+        <div class="field">
+          <label class="field-label">End time</label>
+          <input class="text-input" type="time" v-model="blockForm.end_time" />
+        </div>
+        <div class="field">
+          <label class="field-label">Days</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button v-for="(d, i) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="i" type="button" class="outline-btn" :style="{ background: blockForm.days_of_week.includes(i+1) ? 'var(--tf-violet)' : 'transparent', color: blockForm.days_of_week.includes(i+1) ? '#fff' : 'var(--tf-text-secondary)' }" @click="toggleDay(i+1)">{{ d }}</button>
+          </div>
+        </div>
+        <template #footer>
+          <button class="outline-btn" type="button" @click="showBlockModal = false">Cancel</button>
+          <button class="primary-btn" type="button" @click="createBlock">Add</button>
+        </template>
+      </ModalBase>
     </AppShell>
   </div>
 </template>
 
-<style>
+<style scoped>
 .timetable-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

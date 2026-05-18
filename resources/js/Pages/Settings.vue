@@ -1,6 +1,7 @@
 <script setup>
 import axios from 'axios';
 import { onMounted, ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import AppShell from '../Layouts/AppShell.vue';
 
 const props = defineProps({
@@ -11,10 +12,27 @@ const props = defineProps({
 });
 
 const activeSection = ref('Profile');
-const sections = ['Profile', 'Notifications', 'Pomodoro', 'Goals', 'Leaderboard', 'Account'];
+const sections = ['Profile', 'Appearance', 'Notifications', 'Pomodoro', 'Goals', 'Leaderboard', 'Account'];
+
+const darkMode = ref(document.documentElement.classList.contains('dark'));
+
+const toggleDarkMode = () => {
+  darkMode.value = !darkMode.value;
+  if (darkMode.value) {
+    document.documentElement.classList.add('dark');
+    localStorage.setItem('theme', 'dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+    localStorage.setItem('theme', 'light');
+  }
+  if (window.TimeflowToast) {
+    window.TimeflowToast.success(darkMode.value ? 'Dark mode enabled' : 'Light mode enabled');
+  }
+};
 
 const profileForm = ref({
   name: '',
+  email: '',
   timezone: '',
   avatar_url: '',
 });
@@ -39,40 +57,41 @@ const leaderboardForm = ref({
   alias: '',
 });
 
-const loadSettings = async () => {
-  try {
-    const response = await axios.get('/api/user');
-    const data = response.data || {};
-    profileForm.value = {
-      name: data.name || '',
-      timezone: data.timezone || '',
-      avatar_url: data.avatar_url || '',
-    };
-    notificationsForm.value = {
-      notifications_enabled: Boolean(data.notifications_enabled),
-      email_digest_enabled: Boolean(data.email_digest_enabled),
-    };
-    pomodoroForm.value = {
-      pomodoro_work_min: Number(data.pomodoro_work_min || 25),
-      pomodoro_break_min: Number(data.pomodoro_break_min || 5),
-      pomodoro_long_break_min: Number(data.pomodoro_long_break_min || 15),
-    };
-    goalsForm.value = {
-      daily_goal_hours: Number(data.daily_goal_hours || 6),
-    };
-    leaderboardForm.value = {
-      opt_in: Boolean(data.leaderboard_opt_in),
-      alias: data.leaderboard_alias || '',
-    };
-  } catch (error) {
-    console.warn('Settings load failed', error);
-  }
+const loadSettings = () => {
+  const page = usePage();
+  const user = page.props?.auth?.user;
+  if (!user) return;
+
+  profileForm.value = {
+    name: user.name || '',
+    email: user.email || '',
+    timezone: user.timezone || 'Asia/Kolkata',
+    avatar_url: user.avatar_url || '',
+  };
+  notificationsForm.value = {
+    notifications_enabled: Boolean(user.notifications_enabled),
+    email_digest_enabled: Boolean(user.email_digest_enabled),
+  };
+  pomodoroForm.value = {
+    pomodoro_work_min: Number(user.pomodoro_work_min || 25),
+    pomodoro_break_min: Number(user.pomodoro_break_min || 5),
+    pomodoro_long_break_min: 15,
+  };
+  goalsForm.value = {
+    daily_goal_hours: Number(user.daily_goal_hours || 6),
+  };
+  leaderboardForm.value = {
+    opt_in: Boolean(user.leaderboard_opt_in),
+    alias: user.leaderboard_alias || '',
+  };
 };
 
 const saveProfile = async () => {
   try {
     await axios.put('/api/settings/profile', profileForm.value);
+    if (window.TimeflowToast) window.TimeflowToast.success('Profile saved');
   } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to save profile');
     console.warn('Profile update failed', error);
   }
 };
@@ -80,7 +99,9 @@ const saveProfile = async () => {
 const saveNotifications = async () => {
   try {
     await axios.put('/api/settings/notifications', notificationsForm.value);
+    if (window.TimeflowToast) window.TimeflowToast.success('Notification preferences saved');
   } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to save notifications');
     console.warn('Notifications update failed', error);
   }
 };
@@ -91,7 +112,9 @@ const savePomodoro = async () => {
       pomodoro_work_min: pomodoroForm.value.pomodoro_work_min,
       pomodoro_break_min: pomodoroForm.value.pomodoro_break_min,
     });
+    if (window.TimeflowToast) window.TimeflowToast.success('Pomodoro settings saved');
   } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to save pomodoro settings');
     console.warn('Pomodoro update failed', error);
   }
 };
@@ -102,7 +125,9 @@ const saveLeaderboard = async () => {
       opt_in: leaderboardForm.value.opt_in,
       alias: leaderboardForm.value.alias,
     });
+    if (window.TimeflowToast) window.TimeflowToast.success('Leaderboard preferences saved');
   } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to save leaderboard settings');
     console.warn('Leaderboard update failed', error);
   }
 };
@@ -118,7 +143,9 @@ const exportData = async () => {
     link.download = 'timeflow-export.json';
     link.click();
     URL.revokeObjectURL(url);
+    if (window.TimeflowToast) window.TimeflowToast.success('Data exported');
   } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Export failed');
     console.warn('Export failed', error);
   }
 };
@@ -173,12 +200,39 @@ onMounted(() => {
               <input class="text-input" type="text" data-testid="profile-name" v-model="profileForm.name" />
             </div>
             <div class="field">
+              <label class="field-label">Email</label>
+              <input class="text-input" type="email" :value="profileForm.email" disabled style="opacity:0.6;cursor:not-allowed" />
+            </div>
+            <div class="field">
               <label class="field-label">Timezone</label>
               <select class="text-input" data-testid="profile-timezone" v-model="profileForm.timezone">
-                <option :value="profileForm.timezone || 'UTC'">{{ profileForm.timezone || 'UTC' }}</option>
+                <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                <option value="UTC">UTC</option>
+                <option value="America/New_York">America/New_York (EST)</option>
+                <option value="America/Chicago">America/Chicago (CST)</option>
+                <option value="America/Denver">America/Denver (MST)</option>
+                <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                <option value="Europe/London">Europe/London (GMT)</option>
+                <option value="Europe/Berlin">Europe/Berlin (CET)</option>
+                <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                <option value="Australia/Sydney">Australia/Sydney (AEST)</option>
               </select>
             </div>
             <button class="primary-btn" type="button" @click="saveProfile">Save profile</button>
+          </div>
+
+          <div v-else-if="activeSection === 'Appearance'" class="tf-card">
+            <div class="panel-title">Appearance</div>
+            <div class="toggle-row">
+              <div>
+                <span>Dark mode</span>
+                <div class="field-hint">Switch between light and dark theme.</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" :checked="darkMode" @change="toggleDarkMode" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
 
           <div v-else-if="activeSection === 'Notifications'" class="tf-card">
@@ -243,7 +297,7 @@ onMounted(() => {
   </div>
 </template>
 
-<style>
+<style scoped>
 .settings-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
@@ -405,5 +459,54 @@ onMounted(() => {
   .settings-layout {
     grid-template-columns: 1fr;
   }
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--tf-text-hint);
+  margin-top: 2px;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--tf-border-strong);
+  border-radius: 22px;
+  transition: background 0.3s ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--tf-violet);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
 }
 </style>

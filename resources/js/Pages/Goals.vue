@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import ModalBase from '../Components/ModalBase.vue';
 
 const props = defineProps({
   navigation: {
@@ -12,6 +13,10 @@ const props = defineProps({
 
 const goals = ref([]);
 const exams = ref([]);
+const showGoalModal = ref(false);
+const showExamModal = ref(false);
+const goalForm = ref({ title: '', type: 'daily_hours', target_value: '' });
+const examForm = ref({ subject: '', exam_date: '' });
 
 const loadGoals = async () => {
   try {
@@ -72,6 +77,40 @@ const formatExamDate = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
+
+const createGoal = async () => {
+  try {
+    await axios.post('/api/goals', goalForm.value);
+    showGoalModal.value = false;
+    goalForm.value = { title: '', type: 'daily_hours', target_value: '' };
+    loadGoals();
+    if (window.TimeflowToast) window.TimeflowToast.success('Goal created');
+  } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to create goal');
+  }
+};
+
+const createExam = async () => {
+  try {
+    await axios.post('/api/exams', examForm.value);
+    showExamModal.value = false;
+    examForm.value = { subject: '', exam_date: '' };
+    loadExams();
+    if (window.TimeflowToast) window.TimeflowToast.success('Exam added');
+  } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to add exam');
+  }
+};
+
+const deleteExam = async (id) => {
+  try {
+    await axios.delete(`/api/exams/${id}`);
+    loadExams();
+    if (window.TimeflowToast) window.TimeflowToast.success('Exam deleted');
+  } catch (error) {
+    console.warn('Delete exam failed', error);
+  }
+};
 </script>
 
 <template>
@@ -82,7 +121,7 @@ const formatExamDate = (dateString) => {
           <div class="page-title">Goals</div>
           <div class="page-subtitle">Track progress across goals and exams.</div>
         </div>
-        <button class="primary-btn" type="button">Create goal</button>
+        <button class="primary-btn" type="button" @click="showGoalModal = true">Create goal</button>
       </div>
 
       <div class="section-title">Goals</div>
@@ -107,7 +146,7 @@ const formatExamDate = (dateString) => {
 
       <div class="section-title">Upcoming Exams</div>
       <div class="exam-actions">
-        <button class="outline-btn" type="button">+ Add exam</button>
+        <button class="outline-btn" type="button" @click="showExamModal = true">+ Add exam</button>
       </div>
       <div class="exam-list">
         <div v-if="hasExams">
@@ -120,17 +159,55 @@ const formatExamDate = (dateString) => {
             </div>
             <div class="exam-actions">
               <button class="tf-icon-button" type="button" aria-label="Edit exam"><i class="ti ti-edit" aria-hidden="true"></i></button>
-              <button class="tf-icon-button" type="button" aria-label="Delete exam"><i class="ti ti-trash" aria-hidden="true"></i></button>
+              <button class="tf-icon-button" type="button" aria-label="Delete exam" @click="deleteExam(exam.id)"><i class="ti ti-trash" aria-hidden="true"></i></button>
             </div>
           </div>
         </div>
         <div v-else class="empty-state">No upcoming exams.</div>
       </div>
+
+      <ModalBase :open="showGoalModal" title="Create Goal" @close="showGoalModal = false">
+        <div class="field">
+          <label class="field-label">Goal title</label>
+          <input class="text-input" type="text" v-model="goalForm.title" placeholder="e.g. Study 6h daily" />
+        </div>
+        <div class="field">
+          <label class="field-label">Type</label>
+          <select class="text-input" v-model="goalForm.type">
+            <option value="daily_hours">Daily hours</option>
+            <option value="weekly_hours">Weekly hours</option>
+            <option value="focus_hours">Focus hours</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Target (hours)</label>
+          <input class="text-input" type="number" v-model="goalForm.target_value" placeholder="e.g. 6" />
+        </div>
+        <template #footer>
+          <button class="outline-btn" type="button" @click="showGoalModal = false">Cancel</button>
+          <button class="primary-btn" type="button" @click="createGoal">Create</button>
+        </template>
+      </ModalBase>
+
+      <ModalBase :open="showExamModal" title="Add Exam" @close="showExamModal = false">
+        <div class="field">
+          <label class="field-label">Subject</label>
+          <input class="text-input" type="text" v-model="examForm.subject" placeholder="e.g. Mathematics" />
+        </div>
+        <div class="field">
+          <label class="field-label">Exam date</label>
+          <input class="text-input" type="date" v-model="examForm.exam_date" />
+        </div>
+        <template #footer>
+          <button class="outline-btn" type="button" @click="showExamModal = false">Cancel</button>
+          <button class="primary-btn" type="button" @click="createExam">Add</button>
+        </template>
+      </ModalBase>
     </AppShell>
   </div>
 </template>
 
-<style>
+<style scoped>
 .goals-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

@@ -34,7 +34,7 @@ const submitRegister = async () => {
       password_confirmation: form.value.password_confirmation,
     });
     if (import.meta.env?.MODE !== 'test') {
-      window.location.assign('/onboarding');
+      window.location.assign('/dashboard');
     }
   } catch (error) {
     errorMessage.value = 'Unable to create account. Please try again.';
@@ -79,7 +79,7 @@ const submitRegister = async () => {
   </div>
 </template>
 
-<style>
+<style scoped>
 .auth-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

@@ -22,6 +22,7 @@ const profile = ref({
 });
 
 const badges = ref([]);
+const xpHistory = ref([]);
 
 const levelTitles = {
   1: 'Starter',
@@ -79,6 +80,21 @@ const loadGamification = async () => {
       if (Array.isArray(data)) {
         badges.value = data;
       }
+    }
+
+    // Load XP history
+    try {
+      const xpRes = await axios.get('/api/gamification/xp-history');
+      if (Array.isArray(xpRes.data?.data)) {
+        xpHistory.value = xpRes.data.data.map((entry) => ({
+          id: entry.id,
+          reason: entry.reason || 'Session logged',
+          xp: entry.xp || 0,
+          date: new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        }));
+      }
+    } catch {
+      // XP history is optional
     }
   } catch (error) {
     console.warn('Gamification fetch failed', error);
@@ -138,17 +154,20 @@ onMounted(() => {
 
       <div class="tf-card xp-history">
         <div class="xp-header">XP History</div>
-        <div class="xp-row" v-for="row in 3" :key="row">
-          <span>Session logged</span>
-          <span class="xp-amount">+10 XP</span>
-          <span class="xp-date">May 18</span>
+        <div v-if="xpHistory.length">
+          <div class="xp-row" v-for="entry in xpHistory" :key="entry.id">
+            <span>{{ entry.reason }}</span>
+            <span class="xp-amount">+{{ entry.xp }} XP</span>
+            <span class="xp-date">{{ entry.date }}</span>
+          </div>
         </div>
+        <div v-else class="xp-row"><span>No XP events yet. Start tracking to earn XP.</span></div>
       </div>
     </AppShell>
   </div>
 </template>
 
-<style>
+<style scoped>
 .achievements-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

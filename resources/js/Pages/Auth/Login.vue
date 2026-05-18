@@ -25,7 +25,7 @@ const submitLogin = async () => {
       password: form.value.password,
     });
     if (import.meta.env?.MODE !== 'test') {
-      window.location.assign('/onboarding');
+      window.location.assign('/dashboard');
     }
   } catch (error) {
     errorMessage.value = 'Unable to sign in. Check your credentials and try again.';
@@ -63,7 +63,7 @@ const submitLogin = async () => {
   </div>
 </template>
 
-<style>
+<style scoped>
 .auth-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

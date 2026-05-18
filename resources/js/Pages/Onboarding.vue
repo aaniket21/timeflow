@@ -77,7 +77,7 @@ const skipOnboarding = () => {
   </div>
 </template>
 
-<style>
+<style scoped>
 .onboarding-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

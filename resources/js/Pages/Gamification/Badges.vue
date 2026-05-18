@@ -43,7 +43,7 @@ const props = defineProps({
   </div>
 </template>
 
-<style>
+<style scoped>
 .badge-shell {
   min-height: 100vh;
   padding: 32px 26px 60px;

@@ -1,6 +1,6 @@
 <script setup>
 import axios from 'axios';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 
 const props = defineProps({
@@ -14,6 +14,15 @@ const unlocked = ref(false);
 const leaders = ref([]);
 const xpTotal = ref(0);
 const streakCurrent = ref(0);
+const lastUpdatedAt = ref(null);
+
+const lastUpdatedLabel = computed(() => {
+  if (!lastUpdatedAt.value) return '';
+  const diff = Math.floor((Date.now() - lastUpdatedAt.value) / 60000);
+  if (diff < 1) return 'Updated just now';
+  if (diff === 1) return 'Last updated 1 min ago';
+  return `Last updated ${diff} min ago`;
+});
 
 const loadLeaderboard = async () => {
   try {
@@ -42,6 +51,8 @@ const loadLeaderboard = async () => {
         }));
       }
     }
+
+    lastUpdatedAt.value = Date.now();
   } catch (error) {
     console.warn('Leaderboard fetch failed', error);
   }
@@ -77,13 +88,13 @@ onMounted(() => {
           <div class="alias">{{ leader.name }}</div>
           <div class="xp">{{ leader.xp }} XP</div>
         </div>
-        <div class="board-footer">Last updated 8 min ago</div>
+        <div class="board-footer">{{ lastUpdatedLabel }}</div>
       </div>
     </AppShell>
   </div>
 </template>
 
-<style>
+<style scoped>
 .leaderboard-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

@@ -90,7 +90,7 @@ const submitReset = async () => {
   </div>
 </template>
 
-<style>
+<style scoped>
 .auth-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

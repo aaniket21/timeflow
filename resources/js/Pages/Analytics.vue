@@ -641,7 +641,7 @@ function heatmapLevel(totalSeconds) {
   </div>
 </template>
 
-<style>
+<style scoped>
 .analytics-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

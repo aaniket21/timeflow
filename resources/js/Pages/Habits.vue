@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import ModalBase from '../Components/ModalBase.vue';
 
 const props = defineProps({
   navigation: {
@@ -15,6 +16,8 @@ const palette = ['var(--tf-violet)', 'var(--tf-mint)', 'var(--tf-rose)', 'var(--
 const startDate = ref(startOfWeek(new Date()));
 const habits = ref([]);
 const stats = ref({ checks_total: 0, active_habits: 0, longest_streak: 0 });
+const showHabitModal = ref(false);
+const habitForm = ref({ title: '', frequency: 'daily' });
 
 const days = computed(() => {
   const labels = [];
@@ -58,6 +61,26 @@ onMounted(() => {
   loadHabits();
 });
 
+const toggleCheck = async (habit, dayIndex) => {
+  const newValue = !habit.checks[dayIndex];
+  habit.checks[dayIndex] = newValue;
+
+  const cursor = new Date(startDate.value);
+  cursor.setDate(cursor.getDate() + dayIndex);
+  const dateStr = formatDateInput(cursor);
+
+  try {
+    await axios.post(`/api/habits/${habit.id}/log`, {
+      date: dateStr,
+      done: newValue,
+    });
+    loadHabits();
+  } catch (error) {
+    habit.checks[dayIndex] = !newValue;
+    console.warn('Habit toggle failed', error);
+  }
+};
+
 function startOfWeek(date) {
   const base = new Date(date);
   const day = base.getDay();
@@ -73,6 +96,18 @@ function formatDateInput(date) {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+const createHabit = async () => {
+  try {
+    await axios.post('/api/habits', habitForm.value);
+    showHabitModal.value = false;
+    habitForm.value = { title: '', frequency: 'daily' };
+    loadHabits();
+    if (window.TimeflowToast) window.TimeflowToast.success('Habit created');
+  } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to create habit');
+  }
+};
 </script>
 
 <template>
@@ -83,7 +118,7 @@ function formatDateInput(date) {
           <div class="page-title">Habit Tracker</div>
           <div class="page-subtitle">Keep streaks consistent all week.</div>
         </div>
-        <button class="outline-btn" type="button">+ Add habit</button>
+        <button class="outline-btn" type="button" @click="showHabitModal = true">+ Add habit</button>
       </div>
 
       <div class="stats-row">
@@ -113,8 +148,8 @@ function formatDateInput(date) {
               <span>{{ habit.name }}</span>
               <span class="habit-streak">{{ habit.streak }}</span>
             </div>
-            <div v-for="(check, index) in habit.checks" :key="index" class="check-cell">
-              <span class="check-box" :style="{ background: check ? habit.color : 'transparent', borderColor: habit.color }"></span>
+            <div v-for="(check, index) in habit.checks" :key="index" class="check-cell" @click="toggleCheck(habit, index)">
+              <span class="check-box" :style="{ background: check ? habit.color : 'transparent', borderColor: habit.color, cursor: 'pointer' }"></span>
             </div>
           </div>
         </div>
@@ -125,11 +160,30 @@ function formatDateInput(date) {
         <div class="tf-section-label">Insights</div>
         <div class="insight">Check back after 7 days for habit insights.</div>
       </div>
+
+      <ModalBase :open="showHabitModal" title="Add Habit" @close="showHabitModal = false">
+        <div class="field">
+          <label class="field-label">Habit name</label>
+          <input class="text-input" type="text" v-model="habitForm.title" placeholder="e.g. Read 30 min" />
+        </div>
+        <div class="field">
+          <label class="field-label">Frequency</label>
+          <select class="text-input" v-model="habitForm.frequency">
+            <option value="daily">Daily</option>
+            <option value="weekdays">Weekdays only</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <template #footer>
+          <button class="outline-btn" type="button" @click="showHabitModal = false">Cancel</button>
+          <button class="primary-btn" type="button" @click="createHabit">Add</button>
+        </template>
+      </ModalBase>
     </AppShell>
   </div>
 </template>
 
-<style>
+<style scoped>
 .habits-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

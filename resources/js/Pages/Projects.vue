@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import ModalBase from '../Components/ModalBase.vue';
 
 const props = defineProps({
   navigation: {
@@ -12,6 +13,8 @@ const props = defineProps({
 
 const showArchived = ref(false);
 const projects = ref([]);
+const showCreateModal = ref(false);
+const createForm = ref({ name: '', category: '', color: '#7C5CFC', budget_hours: '' });
 
 const filteredProjects = computed(() => {
   if (showArchived.value) return projects.value;
@@ -31,6 +34,39 @@ const loadProjects = async () => {
     }
   } catch (error) {
     console.warn('Project summary fetch failed', error);
+  }
+};
+
+const createProject = async () => {
+  try {
+    await axios.post('/api/projects', createForm.value);
+    showCreateModal.value = false;
+    createForm.value = { name: '', category: '', color: '#7C5CFC', budget_hours: '' };
+    loadProjects();
+    if (window.TimeflowToast) window.TimeflowToast.success('Project created');
+  } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to create project');
+    console.warn('Create project failed', error);
+  }
+};
+
+const archiveProject = async (id) => {
+  try {
+    await axios.put(`/api/projects/${id}/archive`);
+    loadProjects();
+    if (window.TimeflowToast) window.TimeflowToast.success('Project archived');
+  } catch (error) {
+    console.warn('Archive failed', error);
+  }
+};
+
+const deleteProject = async (id) => {
+  try {
+    await axios.delete(`/api/projects/${id}`);
+    loadProjects();
+    if (window.TimeflowToast) window.TimeflowToast.success('Project deleted');
+  } catch (error) {
+    console.warn('Delete failed', error);
   }
 };
 
@@ -61,7 +97,7 @@ const formatLastSession = (isoString) => {
           <div class="page-title">Projects</div>
           <div class="page-subtitle">Keep budgets and progress visible.</div>
         </div>
-        <button class="primary-btn" type="button">New project</button>
+        <button class="primary-btn" type="button" @click="showCreateModal = true">New project</button>
       </div>
 
       <label class="toggle-row">
@@ -98,15 +134,38 @@ const formatLastSession = (isoString) => {
           </div>
           <div class="project-actions">
             <button class="tf-icon-button" type="button" aria-label="Edit project"><i class="ti ti-edit" aria-hidden="true"></i></button>
-            <button class="tf-icon-button" type="button" aria-label="Archive project"><i class="ti ti-archive" aria-hidden="true"></i></button>
+            <button class="tf-icon-button" type="button" aria-label="Archive project" @click="archiveProject(project.id)"><i class="ti ti-archive" aria-hidden="true"></i></button>
           </div>
         </div>
       </div>
+
+      <ModalBase :open="showCreateModal" title="New Project" @close="showCreateModal = false">
+        <div class="field">
+          <label class="field-label">Project name</label>
+          <input class="text-input" type="text" v-model="createForm.name" placeholder="e.g. Math Revision" />
+        </div>
+        <div class="field">
+          <label class="field-label">Category</label>
+          <input class="text-input" type="text" v-model="createForm.category" placeholder="e.g. Study" />
+        </div>
+        <div class="field">
+          <label class="field-label">Budget (hours)</label>
+          <input class="text-input" type="number" v-model="createForm.budget_hours" placeholder="e.g. 40" />
+        </div>
+        <div class="field">
+          <label class="field-label">Color</label>
+          <input class="text-input" type="color" v-model="createForm.color" />
+        </div>
+        <template #footer>
+          <button class="outline-btn" type="button" @click="showCreateModal = false">Cancel</button>
+          <button class="primary-btn" type="button" @click="createProject">Create</button>
+        </template>
+      </ModalBase>
     </AppShell>
   </div>
 </template>
 
-<style>
+<style scoped>
 .projects-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

@@ -1,37 +1,12 @@
 <script setup>
-import { computed, ref } from 'vue';
+import axios from 'axios';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 
 const props = defineProps({
   navigation: {
     type: Object,
-    default: () => ({
-      sections: [
-        {
-          label: 'Main',
-          items: [
-            { label: 'Dashboard', icon: 'ti-layout-dashboard', active: false },
-            { label: 'Timer', icon: 'ti-player-play', active: true },
-            { label: 'Analytics', icon: 'ti-chart-bar', active: false },
-            { label: 'Projects', icon: 'ti-folder', active: false, count: 4 },
-          ],
-        },
-        {
-          label: 'Grow',
-          items: [
-            { label: 'Achievements', icon: 'ti-trophy', active: false },
-            { label: 'Goals', icon: 'ti-target', active: false },
-            { label: 'Leaderboard', icon: 'ti-podium', active: false },
-          ],
-        },
-        {
-          label: 'Export',
-          items: [
-            { label: 'Reports', icon: 'ti-file-analytics', active: false },
-          ],
-        },
-      ],
-    }),
+    default: () => ({ sections: [] }),
   },
 });
 
@@ -41,74 +16,226 @@ const isRunning = ref(false);
 const projectMenuOpen = ref(false);
 const manualOpen = ref(false);
 const selectedProjectId = ref('');
+const sessionLabel = ref('');
+const sessionNotes = ref('');
+const activeSessionId = ref(null);
+const timerSeconds = ref(0);
+const pomodoroSeconds = ref(25 * 60);
+const pomodoroPhase = ref('work');
+const pomodoroCycle = ref(0);
 
-const projects = [
-  { id: 'p1', name: 'Frontend build', category: 'Coding', color: 'violet' },
-  { id: 'p2', name: 'DSA practice', category: 'Study', color: 'mint' },
-  { id: 'p3', name: 'Client review', category: 'Meetings', color: 'amber' },
-  { id: 'p4', name: 'Gym session', category: 'Personal', color: 'rose' },
-];
+const projects = ref([]);
+const sessionGroups = ref([]);
+const logPage = ref(1);
+const hasMoreLogs = ref(false);
 
-const sessionGroups = [
-  {
-    label: 'Today',
-    sessions: [
-      { id: 1, project: 'Frontend build', category: 'Coding', color: 'violet', start: '09:40 AM', duration: '01:24', type: 'timer' },
-      { id: 2, project: 'DSA practice', category: 'Study', color: 'mint', start: '08:20 AM', duration: '00:52', type: 'pomodoro' },
-      { id: 3, project: 'Team standup', category: 'Meetings', color: 'amber', start: '07:40 AM', duration: '00:15', type: 'timer' },
-    ],
-  },
-  {
-    label: 'Yesterday',
-    sessions: [
-      { id: 4, project: 'Wireframes', category: 'Design', color: 'sky', start: '05:10 PM', duration: '01:10', type: 'timer' },
-      { id: 5, project: 'Math revision', category: 'Study', color: 'mint', start: '03:00 PM', duration: '00:25', type: 'pomodoro' },
-    ],
-  },
-];
+const manualForm = ref({ project_id: '', date: '', start: '', end: '' });
 
-const pomodoroDots = [
-  { id: 1, state: 'done' },
-  { id: 2, state: 'done' },
-  { id: 3, state: 'active' },
-  { id: 4, state: 'pending' },
-];
+let timerInterval = null;
 
 const activeProject = computed(() =>
-  projects.find((project) => project.id === selectedProjectId.value) || null
+  projects.value.find((p) => p.id === selectedProjectId.value) || null
 );
 
 const projectGroups = computed(() => {
   const grouped = {};
-  projects.forEach((project) => {
-    if (!grouped[project.category]) {
-      grouped[project.category] = [];
-    }
-    grouped[project.category].push(project);
+  projects.value.forEach((p) => {
+    const cat = p.category || 'Other';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(p);
   });
-
   return Object.entries(grouped).map(([label, items]) => ({ label, items }));
+});
+
+const timerDisplay = computed(() => {
+  const total = mode.value === 'pomodoro' ? pomodoroSeconds.value : timerSeconds.value;
+  const h = String(Math.floor(total / 3600)).padStart(2, '0');
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+  const s = String(total % 60).padStart(2, '0');
+  return mode.value === 'pomodoro' ? `${m}:${s}` : `${h}:${m}:${s}`;
 });
 
 const statusLabel = computed(() => (isRunning.value ? 'Session in progress' : 'Ready to start'));
 const startStopLabel = computed(() => (isRunning.value ? 'Stop Session' : 'Start Session'));
 
-const setTab = (tab) => {
-  activeTab.value = tab;
+const dateLabel = computed(() => new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+
+const pomodoroDots = computed(() => {
+  const dots = [];
+  for (let i = 0; i < 4; i++) {
+    if (i < pomodoroCycle.value) dots.push({ id: i, state: 'done' });
+    else if (i === pomodoroCycle.value && isRunning.value) dots.push({ id: i, state: 'active' });
+    else dots.push({ id: i, state: 'pending' });
+  }
+  return dots;
+});
+
+const loadProjects = async () => {
+  try {
+    const res = await axios.get('/api/projects/summary');
+    if (Array.isArray(res.data?.data)) {
+      projects.value = res.data.data.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category || 'Other',
+        color: p.color || 'violet',
+      }));
+    }
+  } catch (e) {
+    console.warn('Projects fetch failed', e);
+  }
 };
 
-const setMode = (value) => {
-  mode.value = value;
+const loadSessionLog = async (reset = false) => {
+  if (reset) { logPage.value = 1; sessionGroups.value = []; }
+  try {
+    const res = await axios.get('/api/sessions', { params: { page: logPage.value, per_page: 10 } });
+    const data = res.data?.data;
+    if (Array.isArray(data)) {
+      const grouped = {};
+      data.forEach((s) => {
+        const d = new Date(s.started_at);
+        const today = new Date();
+        const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+        let label;
+        if (d.toDateString() === today.toDateString()) label = 'Today';
+        else if (d.toDateString() === yesterday.toDateString()) label = 'Yesterday';
+        else label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        if (!grouped[label]) grouped[label] = [];
+        grouped[label].push({
+          id: s.id,
+          project: s.project_name || s.label || 'Untitled',
+          category: s.category || '',
+          color: s.color || 'violet',
+          start: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          duration: formatDuration(s.duration_seconds),
+          type: s.type || 'timer',
+        });
+      });
+      sessionGroups.value = Object.entries(grouped).map(([label, sessions]) => ({ label, sessions }));
+      hasMoreLogs.value = (res.data?.meta?.last_page || 1) > logPage.value;
+    }
+  } catch (e) {
+    console.warn('Session log fetch failed', e);
+  }
+};
+
+const startSession = async () => {
+  isRunning.value = true;
+  timerSeconds.value = 0;
+  startTicking();
+
+  try {
+    const res = await axios.post('/api/sessions/start', {
+      project_id: selectedProjectId.value || null,
+      label: sessionLabel.value || null,
+      type: mode.value,
+    });
+    activeSessionId.value = res.data?.data?.id || null;
+    if (window.TimeflowToast) window.TimeflowToast.success('Session started');
+  } catch (e) {
+    console.warn('Start session API failed (timer running locally)', e);
+  }
+};
+
+const stopSession = async () => {
+  stopTicking();
+  isRunning.value = false;
+  if (activeSessionId.value) {
+    try {
+      await axios.post(`/api/sessions/${activeSessionId.value}/stop`, {
+        notes: sessionNotes.value || null,
+      });
+    } catch (e) {
+      console.warn('Stop session failed', e);
+    }
+  }
+  activeSessionId.value = null;
+  timerSeconds.value = 0;
+  sessionNotes.value = '';
+  loadSessionLog(true);
 };
 
 const toggleTimer = () => {
-  isRunning.value = !isRunning.value;
+  if (isRunning.value) { stopSession(); } else { startSession(); }
+};
+
+const startTicking = () => {
+  stopTicking();
+  timerInterval = setInterval(() => {
+    if (mode.value === 'pomodoro') {
+      pomodoroSeconds.value = Math.max(0, pomodoroSeconds.value - 1);
+      if (pomodoroSeconds.value === 0) {
+        if (pomodoroPhase.value === 'work') {
+          pomodoroPhase.value = 'break';
+          pomodoroSeconds.value = 5 * 60;
+          pomodoroCycle.value += 1;
+        } else {
+          pomodoroPhase.value = 'work';
+          pomodoroSeconds.value = 25 * 60;
+        }
+      }
+    } else {
+      timerSeconds.value += 1;
+    }
+  }, 1000);
+};
+
+const stopTicking = () => {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 };
 
 const selectProject = (id) => {
   selectedProjectId.value = id;
   projectMenuOpen.value = false;
 };
+
+const setTab = (tab) => {
+  activeTab.value = tab;
+  if (tab === 'log') loadSessionLog(true);
+};
+
+const setMode = (v) => { mode.value = v; };
+
+const loadMoreLogs = () => {
+  logPage.value += 1;
+  loadSessionLog();
+};
+
+const saveManualEntry = async () => {
+  try {
+    await axios.post('/api/sessions/manual', manualForm.value);
+    manualOpen.value = false;
+    manualForm.value = { project_id: '', date: '', start: '', end: '' };
+    loadSessionLog(true);
+  } catch (e) {
+    console.warn('Manual entry failed', e);
+  }
+};
+
+const deleteSession = async (id) => {
+  try {
+    await axios.delete(`/api/sessions/${id}`);
+    loadSessionLog(true);
+  } catch (e) {
+    console.warn('Delete session failed', e);
+  }
+};
+
+function formatDuration(sec) {
+  const t = Math.max(0, Number(sec || 0));
+  const h = String(Math.floor(t / 3600)).padStart(2, '0');
+  const m = String(Math.floor((t % 3600) / 60)).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+onMounted(() => {
+  loadProjects();
+  loadSessionLog(true);
+});
+
+onUnmounted(() => { stopTicking(); });
 </script>
 
 <template>
@@ -119,7 +246,7 @@ const selectProject = (id) => {
             <div class="page-title">Timer</div>
             <div class="page-subtitle">Track a live session or log a past one.</div>
           </div>
-          <div class="tf-date-badge">Thu, May 14</div>
+          <div class="tf-date-badge">{{ dateLabel }}</div>
         </div>
 
         <div class="tab-bar">
@@ -192,13 +319,13 @@ const selectProject = (id) => {
 
           <div v-if="mode === 'timer'" class="tf-card timer-card">
             <div class="status-label" :class="{ running: isRunning }">{{ statusLabel }}</div>
-            <div class="timer-display">00:42:19</div>
+            <div class="timer-display">{{ timerDisplay }}</div>
             <button class="primary-btn" :class="{ danger: isRunning }" type="button" @click="toggleTimer">
               <i class="ti" :class="isRunning ? 'ti-square' : 'ti-player-play'" aria-hidden="true"></i>
               {{ startStopLabel }}
             </button>
             <div v-if="activeProject" class="field">
-              <input class="text-input" type="text" placeholder="Add a label (optional)..." />
+              <input class="text-input" type="text" placeholder="Add a label (optional)..." v-model="sessionLabel" />
             </div>
           </div>
 
@@ -208,9 +335,9 @@ const selectProject = (id) => {
                 <circle class="ring-track" cx="100" cy="100" r="88" />
                 <circle class="ring-fill" cx="100" cy="100" r="88" />
               </svg>
-              <div class="ring-time">12:34</div>
+              <div class="ring-time">{{ timerDisplay }}</div>
             </div>
-            <div class="pomodoro-status">Work time</div>
+            <div class="pomodoro-status">{{ pomodoroPhase === 'work' ? 'Work time' : 'Break time' }}</div>
             <div class="pomodoro-dots">
               <span
                 v-for="dot in pomodoroDots"
@@ -228,7 +355,7 @@ const selectProject = (id) => {
 
           <div class="tf-card notes-card">
             <div class="tf-section-label">Session notes</div>
-            <textarea class="notes-input" placeholder="Add session notes..."></textarea>
+            <textarea class="notes-input" placeholder="Add session notes..." v-model="sessionNotes"></textarea>
           </div>
 
           <div class="tf-card manual-card">
@@ -239,7 +366,7 @@ const selectProject = (id) => {
             <div v-if="manualOpen" class="manual-fields">
               <div class="field">
                 <label class="field-label">Project</label>
-                <select class="text-input">
+                <select class="text-input" v-model="manualForm.project_id">
                   <option value="">Select project</option>
                   <option v-for="project in projects" :key="project.id" :value="project.id">
                     {{ project.name }}
@@ -249,18 +376,18 @@ const selectProject = (id) => {
               <div class="field-grid">
                 <div class="field">
                   <label class="field-label">Date</label>
-                  <input class="text-input" type="date" />
+                  <input class="text-input" type="date" v-model="manualForm.date" />
                 </div>
                 <div class="field">
                   <label class="field-label">Start</label>
-                  <input class="text-input" type="time" />
+                  <input class="text-input" type="time" v-model="manualForm.start" />
                 </div>
                 <div class="field">
                   <label class="field-label">End</label>
-                  <input class="text-input" type="time" />
+                  <input class="text-input" type="time" v-model="manualForm.end" />
                 </div>
               </div>
-              <button class="secondary-btn" type="button">Save session</button>
+              <button class="secondary-btn" type="button" @click="saveManualEntry">Save session</button>
             </div>
           </div>
         </section>
@@ -287,19 +414,19 @@ const selectProject = (id) => {
                 <button class="tf-icon-button" type="button" aria-label="Edit session">
                   <i class="ti ti-edit" aria-hidden="true"></i>
                 </button>
-                <button class="tf-icon-button" type="button" aria-label="Delete session">
+                <button class="tf-icon-button" type="button" aria-label="Delete session" @click="deleteSession(session.id)">
                   <i class="ti ti-trash" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
           </div>
-          <button class="load-more" type="button">Load more</button>
+          <button v-if="hasMoreLogs" class="load-more" type="button" @click="loadMoreLogs">Load more</button>
         </section>
     </AppShell>
   </div>
 </template>
 
-<style>
+<style scoped>
 .timer-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

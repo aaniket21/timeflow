@@ -1,4 +1,5 @@
 <script setup>
+import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
@@ -44,11 +45,24 @@ const levelTitles = {
 };
 
 const greetingName = computed(() => (userProfile.value.name ? userProfile.value.name.split(' ')[0] : 'there'));
+const greetingText = computed(() => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+});
 const loggedHours = computed(() => (todayStats.value.total_seconds / 3600).toFixed(1));
 const goalPercent = computed(() => {
   const goal = Math.max(Number(dailyGoalHours.value) || 1, 1);
   const logged = Number(todayStats.value.total_seconds || 0) / 3600;
   return Math.min(100, Math.round((logged / goal) * 100));
+});
+
+const ringStrokeColor = computed(() => {
+  if (goalPercent.value < 34) return '#EF4444';
+  if (goalPercent.value < 67) return '#F5A623';
+  if (goalPercent.value < 100) return '#0ECFA4';
+  return '#7C5CFC';
 });
 
 const formattedTimer = computed(() => {
@@ -57,6 +71,11 @@ const formattedTimer = computed(() => {
   const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
   const s = String(total % 60).padStart(2, '0');
   return `${h}:${m}:${s}`;
+});
+
+const liveBarPercent = computed(() => {
+  const goalSeconds = Math.max(1, Number(dailyGoalHours.value || 6) * 3600);
+  return Math.min(100, Math.round((timerSeconds.value / goalSeconds) * 100));
 });
 
 const dateLabel = computed(() => new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
@@ -98,6 +117,34 @@ const toggleHabit = async (id) => {
     habit.done = !nextDone;
     console.warn('Habit toggle failed', error);
   }
+};
+
+const stopSession = async () => {
+  if (!activeSession.value?.id) return;
+  try {
+    await axios.post(`/api/sessions/${activeSession.value.id}/stop`);
+    setActiveSession(null);
+    loadDashboard();
+  } catch (error) {
+    console.warn('Stop session failed', error);
+  }
+};
+
+const dismissInsight = async (insight) => {
+  if (!insight?.id) {
+    insights.value = insights.value.filter((i) => i.type !== insight.type);
+    return;
+  }
+  try {
+    await axios.delete(`/api/analytics/insights/${insight.id}`);
+    insights.value = insights.value.filter((i) => i.id !== insight.id);
+  } catch (error) {
+    console.warn('Insight dismiss failed', error);
+  }
+};
+
+const navigateTo = (path) => {
+  router.visit(path);
 };
 
 let timerInterval = null;
@@ -392,7 +439,7 @@ onUnmounted(() => {
     <AppShell :navigation="props.navigation">
       <div class="page-header">
         <div>
-          <div class="page-title">Good morning, {{ greetingName }}</div>
+          <div class="page-title">{{ greetingText }}, {{ greetingName }} 👋</div>
           <div class="page-subtitle">Stay consistent and keep the streak alive.</div>
         </div>
         <div class="tf-date-badge">{{ dateLabel }}</div>
@@ -426,7 +473,7 @@ onUnmounted(() => {
             <div class="focus-ring">
               <svg viewBox="0 0 72 72" aria-hidden="true">
                 <circle class="ring-track" cx="36" cy="36" r="30" />
-                <circle class="ring-fill" cx="36" cy="36" r="30" :style="{ strokeDashoffset: 188 - (188 * goalPercent) / 100 }" />
+                <circle class="ring-fill" cx="36" cy="36" r="30" :style="{ strokeDashoffset: 188 - (188 * goalPercent) / 100, stroke: ringStrokeColor }" />
               </svg>
               <div class="ring-center">
                 <div class="focus-hours">{{ loggedHours }}h</div>
@@ -443,11 +490,11 @@ onUnmounted(() => {
         <div class="tf-card live-card">
           <div class="live-header">
             <div class="live-tag">{{ hasActiveSession ? 'Live' : 'Idle' }}</div>
-            <button v-if="hasActiveSession" class="outline-btn" type="button">Stop</button>
+            <button v-if="hasActiveSession" class="outline-btn" type="button" @click="stopSession">Stop</button>
           </div>
           <div class="live-project">{{ activeSessionLabel }}</div>
           <div class="live-timer">{{ formattedTimer }}</div>
-          <div class="live-bar"><span></span></div>
+          <div class="live-bar"><span :style="{ width: liveBarPercent + '%' }"></span></div>
         </div>
       </div>
 
@@ -516,9 +563,9 @@ onUnmounted(() => {
       <div class="quick-start">
         <div class="tf-section-label">Quick start</div>
         <div class="quick-grid">
-          <button class="quick-btn" type="button">Pomodoro</button>
-          <button class="quick-btn" type="button">Analytics</button>
-          <button class="quick-btn" type="button">Report</button>
+          <button class="quick-btn" type="button" @click="navigateTo('/timer')"><i class="ti ti-alarm" aria-hidden="true"></i> Pomodoro</button>
+          <button class="quick-btn" type="button" @click="navigateTo('/analytics')"><i class="ti ti-chart-bar" aria-hidden="true"></i> Analytics</button>
+          <button class="quick-btn" type="button" @click="navigateTo('/reports')"><i class="ti ti-file-analytics" aria-hidden="true"></i> Report</button>
         </div>
       </div>
 
@@ -537,7 +584,7 @@ onUnmounted(() => {
       <div class="tf-card">
         <div class="recent-header">
           <div class="recent-title">Recent sessions</div>
-          <button class="link-btn" type="button">See all</button>
+          <button class="link-btn" type="button" @click="navigateTo('/timer')">See all →</button>
         </div>
         <div v-for="session in recentSessions" :key="session.id" class="recent-row">
           <span class="color-dot" :style="{ background: session.color }"></span>
@@ -551,15 +598,18 @@ onUnmounted(() => {
 
       <div v-if="insights.length" class="insights">
         <div class="tf-section-label">Insights</div>
-        <div v-for="insight in insights" :key="insight.type" class="insight-card">
-          {{ insight.message }}
+        <div v-for="insight in insights" :key="insight.id || insight.type" class="insight-card">
+          <span>{{ insight.message }}</span>
+          <button class="insight-dismiss" type="button" @click="dismissInsight(insight)" aria-label="Dismiss insight">
+            <i class="ti ti-x" aria-hidden="true"></i>
+          </button>
         </div>
       </div>
     </AppShell>
   </div>
 </template>
 
-<style>
+<style scoped>
 .dashboard-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
@@ -984,6 +1034,7 @@ onUnmounted(() => {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  color: var(--tf-text-primary);
 }
 
 .heatmap {
@@ -1090,6 +1141,29 @@ onUnmounted(() => {
   background: rgba(124, 92, 252, 0.08);
   font-size: 12px;
   color: var(--tf-text-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.insight-dismiss {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--tf-text-hint);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.insight-dismiss:hover {
+  color: var(--tf-text-primary);
+  background: rgba(80, 60, 20, 0.1);
 }
 
 .outline-btn {

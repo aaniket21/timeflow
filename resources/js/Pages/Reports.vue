@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import ModalBase from '../Components/ModalBase.vue';
 
 const props = defineProps({
   navigation: {
@@ -11,6 +12,8 @@ const props = defineProps({
 });
 
 const reports = ref([]);
+const showGenerateModal = ref(false);
+const reportForm = ref({ title: '', date_from: '', date_to: '' });
 
 const formatRange = (start, end) => {
   if (!start || !end) return 'Range unavailable';
@@ -23,8 +26,18 @@ const formatRange = (start, end) => {
 
 const loadReports = async () => {
   try {
-    const response = await axios.get('/api/settings/export');
-    const data = response.data?.data?.reports;
+    let data = null;
+
+    // Try dedicated reports endpoint first
+    try {
+      const res = await axios.get('/api/reports');
+      data = res.data?.data;
+    } catch {
+      // Fallback to export endpoint
+      const res = await axios.get('/api/settings/export');
+      data = res.data?.data?.reports;
+    }
+
     if (Array.isArray(data)) {
       reports.value = data.map((report) => ({
         id: report.id,
@@ -55,6 +68,28 @@ const shareReport = (report) => {
   }
 };
 
+const generateReport = async () => {
+  try {
+    await axios.post('/api/reports', reportForm.value);
+    showGenerateModal.value = false;
+    reportForm.value = { title: '', date_from: '', date_to: '' };
+    loadReports();
+    if (window.TimeflowToast) window.TimeflowToast.success('Report generation started');
+  } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to generate report');
+  }
+};
+
+const deleteReport = async (id) => {
+  try {
+    await axios.delete(`/api/reports/${id}`);
+    loadReports();
+    if (window.TimeflowToast) window.TimeflowToast.success('Report deleted');
+  } catch (error) {
+    console.warn('Delete report failed', error);
+  }
+};
+
 onMounted(() => {
   loadReports();
 });
@@ -68,7 +103,7 @@ onMounted(() => {
           <div class="page-title">Reports</div>
           <div class="page-subtitle">Generate shareable summaries.</div>
         </div>
-        <button class="primary-btn" type="button">Generate report</button>
+        <button class="primary-btn" type="button" @click="showGenerateModal = true">Generate report</button>
       </div>
 
       <div class="report-list">
@@ -91,15 +126,34 @@ onMounted(() => {
             <button class="outline-btn" type="button" @click="shareReport(report)">
               <i class="ti ti-share" aria-hidden="true"></i> Share
             </button>
-            <button class="tf-icon-button" type="button" aria-label="Delete report"><i class="ti ti-trash" aria-hidden="true"></i></button>
+            <button class="tf-icon-button" type="button" aria-label="Delete report" @click="deleteReport(report.id)"><i class="ti ti-trash" aria-hidden="true"></i></button>
           </div>
         </div>
       </div>
+
+      <ModalBase :open="showGenerateModal" title="Generate Report" @close="showGenerateModal = false">
+        <div class="field">
+          <label class="field-label">Report title</label>
+          <input class="text-input" type="text" v-model="reportForm.title" placeholder="e.g. Weekly Summary" />
+        </div>
+        <div class="field">
+          <label class="field-label">From date</label>
+          <input class="text-input" type="date" v-model="reportForm.date_from" />
+        </div>
+        <div class="field">
+          <label class="field-label">To date</label>
+          <input class="text-input" type="date" v-model="reportForm.date_to" />
+        </div>
+        <template #footer>
+          <button class="outline-btn" type="button" @click="showGenerateModal = false">Cancel</button>
+          <button class="primary-btn" type="button" @click="generateReport">Generate</button>
+        </template>
+      </ModalBase>
     </AppShell>
   </div>
 </template>
 
-<style>
+<style scoped>
 .reports-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

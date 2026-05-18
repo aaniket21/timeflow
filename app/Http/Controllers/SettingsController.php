@@ -113,8 +113,12 @@ class SettingsController extends Controller
         $user = $request->user();
 
         DB::transaction(function () use ($user) {
-            $user->delete();
+            $user->forceDelete();
         });
+
+        auth('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json([
             'success' => true,

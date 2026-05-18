@@ -337,7 +337,7 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style>
+<style scoped>
 .focus-shell {
   min-height: 100vh;
   padding: 28px 24px 40px;

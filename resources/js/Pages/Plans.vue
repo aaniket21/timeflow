@@ -103,7 +103,7 @@ const formatDateInput = (date) => {
   </div>
 </template>
 
-<style>
+<style scoped>
 .plans-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
