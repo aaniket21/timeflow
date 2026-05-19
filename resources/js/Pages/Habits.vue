@@ -61,7 +61,13 @@ onMounted(() => {
   loadHabits();
 });
 
+const pendingToggles = ref(new Set());
+
 const toggleCheck = async (habit, dayIndex) => {
+  const toggleKey = `${habit.id}-${dayIndex}`;
+  if (pendingToggles.value.has(toggleKey)) return;
+  pendingToggles.value.add(toggleKey);
+
   const cursor = new Date(startDate.value);
   cursor.setDate(cursor.getDate() + dayIndex);
 
@@ -70,6 +76,7 @@ const toggleCheck = async (habit, dayIndex) => {
 
   if (cursor > now && !habit.checks[dayIndex]) {
     if (window.TimeflowToast) window.TimeflowToast.error('Cannot log habits for future days');
+    pendingToggles.value.delete(toggleKey);
     return;
   }
 
@@ -104,6 +111,8 @@ const toggleCheck = async (habit, dayIndex) => {
     
     if (window.TimeflowToast) window.TimeflowToast.error('Failed to log habit');
     console.warn('Habit toggle failed', error);
+  } finally {
+    pendingToggles.value.delete(toggleKey);
   }
 };
 

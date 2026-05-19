@@ -278,9 +278,25 @@ class GoalController extends Controller
 
         $previousDone = (bool) ($log->exists ? $log->done : false);
         $done = array_key_exists('done', $data) ? (bool) $data['done'] : ! $previousDone;
-
         $log->done = $done;
-        $log->save();
+
+        try {
+            $log->save();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000) {
+                $log = HabitLog::query()
+                    ->where('user_id', $user->id)
+                    ->where('goal_id', $habit->id)
+                    ->where('date', $date)
+                    ->firstOrFail();
+                    
+                $previousDone = (bool) $log->done;
+                $log->done = $done;
+                $log->save();
+            } else {
+                throw $e;
+            }
+        }
 
         $xpGained = 0;
         $newLevel = null;
