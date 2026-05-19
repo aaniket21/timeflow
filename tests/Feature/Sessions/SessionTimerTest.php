@@ -314,4 +314,24 @@ class SessionTimerTest extends TestCase
         $this->assertSame(215, $user->xp_total);
         $this->assertSame(2, $user->level);
     }
+
+    public function test_index_returns_sessions_with_project_and_category(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        TimeSession::factory()->for($user)->create([
+            'project_id' => $project->id,
+            'started_at' => now()->subMinutes(30),
+            'ended_at' => now(),
+            'duration_seconds' => 1800,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/sessions');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.0.project_id', $project->id);
+    }
 }
