@@ -55,7 +55,7 @@ class TimetableController extends Controller
         $user = $request->user();
         $data = $request->validate([
             'title' => ['required', 'string', 'max:100'],
-            'type' => ['required', 'in:class,study,break,personal'],
+            'type' => ['required', 'in:class,study,break,personal,other'],
             'color' => ['required', 'string', 'size:7'],
             'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'days_of_week' => ['required', 'array', 'min:1'],
@@ -125,7 +125,7 @@ class TimetableController extends Controller
 
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:100'],
-            'type' => ['sometimes', 'in:class,study,break,personal'],
+            'type' => ['sometimes', 'in:class,study,break,personal,other'],
             'color' => ['sometimes', 'string', 'size:7'],
             'project_id' => ['sometimes', 'nullable', 'integer', 'exists:projects,id'],
             'days_of_week' => ['sometimes', 'array', 'min:1'],
