@@ -14,6 +14,38 @@ use Illuminate\Support\Str;
 
 class ReportController extends Controller
 {
+    public function index(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $reports = Report::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $reports,
+        ]);
+    }
+
+    public function destroy(Request $request, int $report): JsonResponse
+    {
+        $user = $request->user();
+        $existing = Report::query()
+            ->where('id', $report)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        if ($existing->file_path && Storage::disk('local')->exists($existing->file_path)) {
+            Storage::disk('local')->delete($existing->file_path);
+        }
+
+        $existing->delete();
+
+        return response()->json([
+            'success' => true,
+        ]);
+    }
     public function generate(GenerateReportRequest $request): JsonResponse
     {
         $user = $request->user();

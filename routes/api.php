@@ -67,7 +67,9 @@ Route::middleware(['auth:sanctum', EnsureTimezoneIsSet::class])->group(function 
     Route::put('/sessions/{session}', [SessionController::class, 'update']);
     Route::post('/sessions/{session}/stop', [SessionController::class, 'stop']);
     Route::delete('/sessions/{session}', [SessionController::class, 'destroy']);
-    Route::post('/reports/generate', [ReportController::class, 'generate']);
+    Route::get('/reports', [ReportController::class, 'index']);
+    Route::post('/reports', [ReportController::class, 'generate']);
+    Route::delete('/reports/{report}', [ReportController::class, 'destroy']);
     Route::get('/reports/{report}/download', [ReportController::class, 'download']);
     Route::put('/settings/profile', [SettingsController::class, 'updateProfile']);
     Route::put('/settings/notifications', [SettingsController::class, 'updateNotifications']);
