@@ -27,8 +27,6 @@ const loadProjects = async () => {
     if (Array.isArray(response.data?.data)) {
       projects.value = response.data.data.map((project) => ({
         ...project,
-        hoursLabel: formatHours(project.total_seconds),
-        progress: project.progress_percent ?? 0,
         lastSessionLabel: formatLastSession(project.last_session_at),
       }));
     }
@@ -70,15 +68,6 @@ const deleteProject = async (id) => {
   }
 };
 
-onMounted(() => {
-  loadProjects();
-});
-
-const formatHours = (seconds) => {
-  const value = Number(seconds || 0) / 3600;
-  return `${value.toFixed(1)}h`;
-};
-
 const formatLastSession = (isoString) => {
   if (!isoString) return 'No sessions yet';
   const date = new Date(isoString);
@@ -86,6 +75,56 @@ const formatLastSession = (isoString) => {
   if (diffDays <= 0) return 'Last session today';
   if (diffDays === 1) return 'Last session yesterday';
   return `Last session ${diffDays} days ago`;
+};
+
+const activeSession = ref(null);
+const now = ref(Date.now());
+let tickerInterval = null;
+
+const loadActiveSession = async () => {
+  try {
+    const res = await axios.get('/api/sessions/active');
+    if (res.data?.data?.session) {
+      const session = res.data.data.session;
+      activeSession.value = {
+        project_id: session.project_id,
+        started_at: new Date(session.started_at).getTime()
+      };
+    }
+  } catch (e) {
+    console.warn('Load active session failed', e);
+  }
+};
+
+onMounted(() => {
+  loadProjects();
+  loadActiveSession();
+  tickerInterval = setInterval(() => {
+    now.value = Date.now();
+  }, 1000);
+});
+
+import { onUnmounted } from 'vue';
+onUnmounted(() => {
+  if (tickerInterval) clearInterval(tickerInterval);
+});
+
+const formatHours = (seconds, projectId) => {
+  let total = Number(seconds || 0);
+  if (activeSession.value && activeSession.value.project_id === projectId) {
+    total += Math.max(0, Math.floor((now.value - activeSession.value.started_at) / 1000));
+  }
+  const value = total / 3600;
+  return `${value.toFixed(1)}h`;
+};
+
+const getProgress = (project) => {
+  if (!project.budget_hours) return 0;
+  let total = Number(project.total_seconds || 0);
+  if (activeSession.value && activeSession.value.project_id === project.id) {
+    total += Math.max(0, Math.floor((now.value - activeSession.value.started_at) / 1000));
+  }
+  return (total / 3600) / project.budget_hours * 100;
 };
 </script>
 
@@ -118,15 +157,15 @@ const formatLastSession = (isoString) => {
             <div class="project-client" v-if="project.client_name">{{ project.client_name }}</div>
             <div class="project-chip">{{ project.category || 'Uncategorized' }}</div>
             <div class="project-stats">
-              <span>{{ project.hoursLabel }} logged</span>
+              <span>{{ formatHours(project.total_seconds, project.id) }} logged</span>
               <span v-if="project.budget_hours">Budget {{ project.budget_hours }}h</span>
             </div>
             <div class="budget-bar">
               <span
                 class="budget-fill"
                 :style="{
-                  width: Math.min(project.progress, 100) + '%',
-                  background: project.progress >= 100 ? 'var(--tf-red)' : project.progress >= 80 ? 'var(--tf-amber)' : 'var(--tf-mint)'
+                  width: Math.min(getProgress(project), 100) + '%',
+                  background: getProgress(project) >= 100 ? 'var(--tf-red)' : getProgress(project) >= 80 ? 'var(--tf-amber)' : 'var(--tf-mint)'
                 }"
               ></span>
             </div>

@@ -111,9 +111,9 @@ const loadSessionLog = async (reset = false) => {
         if (!grouped[label]) grouped[label] = [];
         grouped[label].push({
           id: s.id,
-          project: s.project_name || s.label || 'Untitled',
-          category: s.category || '',
-          color: s.color || 'violet',
+          project: s.project?.name || s.category?.name || 'Untitled',
+          category: s.category?.name || s.project?.category?.name || '',
+          color: s.project?.color || s.category?.color || 'violet',
           start: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
           duration: formatDuration(s.duration_seconds),
           notes: s.notes || '',
