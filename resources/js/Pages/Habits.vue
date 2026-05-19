@@ -99,7 +99,12 @@ function formatDateInput(date) {
 
 const createHabit = async () => {
   try {
-    await axios.post('/api/habits', habitForm.value);
+    const payload = {
+      title: habitForm.value.title,
+      type: 'habit',
+      target_value: habitForm.value.frequency === 'daily' ? 7 : (habitForm.value.frequency === 'weekdays' ? 5 : 3),
+    };
+    await axios.post('/api/goals', payload);
     showHabitModal.value = false;
     habitForm.value = { title: '', frequency: 'daily' };
     loadHabits();
