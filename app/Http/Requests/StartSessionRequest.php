@@ -19,6 +19,7 @@ class StartSessionRequest extends FormRequest
             'started_at' => ['nullable', 'date'],
             'type' => ['nullable', 'in:manual,timer,pomodoro'],
             'notes' => ['nullable', 'string', 'max:280'],
+            'label' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

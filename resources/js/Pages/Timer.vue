@@ -14,6 +14,10 @@ const activeTab = ref('active');
 const mode = ref('timer');
 const isRunning = ref(false);
 const projectMenuOpen = ref(false);
+const mainCategory = ref('Project');
+const mainCategoryMenuOpen = ref(false);
+const activityTitle = ref('');
+const otherTitle = ref('');
 const manualOpen = ref(false);
 const selectedProjectId = ref('');
 const sessionLabel = ref('');
@@ -111,9 +115,9 @@ const loadSessionLog = async (reset = false) => {
         if (!grouped[label]) grouped[label] = [];
         grouped[label].push({
           id: s.id,
-          project: s.project?.name || s.category?.name || 'Untitled',
+          project: s.label || s.project?.name || s.category?.name || 'Untitled',
           category: s.category?.name || s.project?.category?.name || '',
-          color: s.project?.color || s.category?.color || 'violet',
+          color: s.color || s.project?.color || s.category?.color || 'violet',
           start: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
           duration: formatDuration(s.duration_seconds),
           notes: s.notes || '',
@@ -128,15 +132,39 @@ const loadSessionLog = async (reset = false) => {
   }
 };
 
+watch(mainCategory, (newVal) => {
+  if (newVal === 'Focus Mode') {
+    mode.value = 'pomodoro';
+  } else {
+    mode.value = 'timer';
+  }
+});
+
 const startSession = async () => {
   isRunning.value = true;
   timerSeconds.value = 0;
   startTicking();
 
+  let finalLabel = sessionLabel.value || null;
+  let finalProjectId = selectedProjectId.value || null;
+
+  if (mainCategory.value === 'Activity') {
+    finalLabel = activityTitle.value || 'activity-notitle';
+    finalProjectId = null;
+  } else if (mainCategory.value === 'Other') {
+    finalLabel = otherTitle.value || 'other-notitle';
+    finalProjectId = null;
+  } else if (mainCategory.value === 'Focus Mode') {
+    finalLabel = null;
+    finalProjectId = null;
+  } else if (mainCategory.value === 'Project') {
+    if (!finalProjectId) finalLabel = 'project-notitle';
+  }
+
   try {
     const res = await axios.post('/api/sessions/start', {
-      project_id: selectedProjectId.value || null,
-      label: sessionLabel.value || null,
+      project_id: finalProjectId,
+      label: finalLabel,
       type: mode.value,
     });
     activeSessionId.value = res.data?.data?.session?.id || null;
@@ -180,12 +208,23 @@ const loadActiveSession = async () => {
       sessionLabel.value = session.label || '';
       mode.value = session.type || 'timer';
       
-      const savedNotes = localStorage.getItem(`tf_notes_${session.id}`);
-      if (savedNotes !== null) {
-        sessionNotes.value = savedNotes;
-      } else if (session.notes) {
-        sessionNotes.value = session.notes;
+      if (session.type === 'pomodoro') {
+        mainCategory.value = 'Focus Mode';
+      } else if (session.project_id) {
+        mainCategory.value = 'Project';
+      } else if (session.label === 'project-notitle') {
+        mainCategory.value = 'Project';
+      } else if (session.label === 'activity-notitle') {
+        mainCategory.value = 'Activity';
+      } else if (session.label === 'other-notitle') {
+        mainCategory.value = 'Other';
+      } else {
+        // Fallback custom titles to Other
+        mainCategory.value = 'Other';
+        otherTitle.value = session.label || '';
       }
+
+      sessionNotes.value = session.notes || '';
 
       const startedAt = new Date(session.started_at).getTime();
       timerSeconds.value = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
@@ -337,7 +376,23 @@ onUnmounted(() => { stopTicking(); });
 
         <section v-if="activeTab === 'active'" class="tab-panel">
           <div class="tf-card select-card">
-            <div class="tf-section-label">Project</div>
+            <div class="tf-section-label">Category</div>
+            <button class="select-trigger" type="button" @click="mainCategoryMenuOpen = !mainCategoryMenuOpen">
+              <span class="select-value">
+                <span>{{ mainCategory }}</span>
+              </span>
+              <i class="ti" :class="mainCategoryMenuOpen ? 'ti-chevron-up' : 'ti-chevron-down'" aria-hidden="true"></i>
+            </button>
+            <div v-if="mainCategoryMenuOpen" class="select-menu">
+              <button class="select-item" type="button" @click="mainCategory = 'Focus Mode'; mainCategoryMenuOpen = false">Focus Mode</button>
+              <button class="select-item" type="button" @click="mainCategory = 'Project'; mainCategoryMenuOpen = false">Project</button>
+              <button class="select-item" type="button" @click="mainCategory = 'Activity'; mainCategoryMenuOpen = false">Activity</button>
+              <button class="select-item" type="button" @click="mainCategory = 'Other'; mainCategoryMenuOpen = false">Other</button>
+            </div>
+          </div>
+
+          <div v-if="mainCategory === 'Project'" class="tf-card select-card" style="margin-top: 16px;">
+            <div class="tf-section-label">Select Project</div>
             <button class="select-trigger" type="button" @click="projectMenuOpen = !projectMenuOpen">
               <span v-if="activeProject" class="select-value">
                 <span class="color-dot" :class="'dot-' + activeProject.color"></span>
@@ -361,8 +416,18 @@ onUnmounted(() => { stopTicking(); });
                   <span>{{ project.name }}</span>
                 </button>
               </div>
-              <button class="select-new" type="button">New project</button>
+              <a href="/projects" class="select-new" style="display: block; text-align: center; text-decoration: none;">New project</a>
             </div>
+          </div>
+
+          <div v-if="mainCategory === 'Activity'" class="tf-card select-card" style="margin-top: 16px;">
+            <div class="tf-section-label">Activity Title</div>
+            <input class="text-input" type="text" placeholder="Enter activity name..." v-model="activityTitle" />
+          </div>
+
+          <div v-if="mainCategory === 'Other'" class="tf-card select-card" style="margin-top: 16px;">
+            <div class="tf-section-label">Other Title</div>
+            <input class="text-input" type="text" placeholder="Enter title..." v-model="otherTitle" />
           </div>
 
           <div class="mode-toggle">

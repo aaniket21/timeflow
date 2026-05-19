@@ -362,6 +362,7 @@ class SessionController extends Controller
             'ended_at' => null,
             'duration_seconds' => null,
             'notes' => $data['notes'] ?? null,
+            'label' => $data['label'] ?? null,
             'is_pomodoro' => $type === 'pomodoro',
             'type' => $type,
         ]);
@@ -406,6 +407,7 @@ class SessionController extends Controller
             'ended_at' => $endedAt,
             'duration_seconds' => $durationSeconds,
             'notes' => $data['notes'] ?? null,
+            'label' => $data['label'] ?? null,
             'is_pomodoro' => $type === 'pomodoro',
             'type' => $type,
         ]);
@@ -447,6 +449,22 @@ class SessionController extends Controller
         $endedAt = array_key_exists('ended_at', $data)
             ? Carbon::parse($data['ended_at'])
             : ($timeSession->ended_at ? Carbon::parse($timeSession->ended_at) : null);
+
+        if (array_key_exists('project_id', $data)) {
+            $updates['project_id'] = $data['project_id'];
+        }
+
+        if (array_key_exists('category_id', $data)) {
+            $updates['category_id'] = $data['category_id'];
+        }
+
+        if (array_key_exists('notes', $data)) {
+            $updates['notes'] = $data['notes'];
+        }
+
+        if (array_key_exists('label', $data)) {
+            $updates['label'] = $data['label'];
+        }
 
         if (array_key_exists('started_at', $data)) {
             $updates['started_at'] = $startedAt;
@@ -527,6 +545,7 @@ class SessionController extends Controller
                     'ended_at' => Carbon::parse($timeSession->ended_at)->toIso8601String(),
                     'duration_seconds' => $timeSession->duration_seconds,
                     'notes' => $timeSession->notes,
+                    'label' => $timeSession->label,
                     'is_pomodoro' => $timeSession->is_pomodoro,
                     'type' => $timeSession->type,
                 ],
@@ -586,7 +605,7 @@ class SessionController extends Controller
             ->whereNotNull('ended_at')
             ->orderByDesc('started_at')
             ->limit($limit)
-            ->get(['id', 'project_id', 'category_id', 'started_at', 'duration_seconds']);
+            ->get(['id', 'project_id', 'category_id', 'started_at', 'duration_seconds', 'label']);
 
         $projectIds = $sessions->pluck('project_id')->filter()->unique();
         $projects = $projectIds->isNotEmpty()
@@ -616,7 +635,7 @@ class SessionController extends Controller
                 ? $categories->get($project->category_id)
                 : null;
 
-            $label = $project->name ?? $category->name ?? 'Session';
+            $label = $session->label ?? $project->name ?? $category->name ?? 'Session';
             $categoryLabel = $category->name ?? ($projectCategory?->name ?? 'General');
             $color = $project->color ?? $category->color ?? '#9ca3af';
 
@@ -627,6 +646,7 @@ class SessionController extends Controller
                 'color' => $color,
                 'duration_seconds' => (int) ($session->duration_seconds ?? 0),
                 'started_at' => Carbon::parse($session->started_at)->toIso8601String(),
+                'type' => $session->type,
             ];
         });
 
@@ -661,7 +681,7 @@ class SessionController extends Controller
         }
 
         $label = $session
-            ? ($project?->name ?? $category?->name ?? 'Session')
+            ? ($session->label ?? $project?->name ?? $category?->name ?? 'Session')
             : null;
         $categoryLabel = $session
             ? ($category?->name ?? ($projectCategory?->name ?? 'General'))

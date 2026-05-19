@@ -20,6 +20,7 @@ class StoreSessionRequest extends FormRequest
             'ended_at' => ['required', 'date', 'after:started_at'],
             'type' => ['nullable', 'in:manual,timer,pomodoro'],
             'notes' => ['nullable', 'string', 'max:280'],
+            'label' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

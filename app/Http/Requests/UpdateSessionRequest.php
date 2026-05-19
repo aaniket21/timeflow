@@ -14,12 +14,13 @@ class UpdateSessionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'project_id' => ['sometimes', 'nullable', 'integer', 'exists:projects,id'],
-            'category_id' => ['sometimes', 'nullable', 'integer', 'exists:categories,id'],
-            'started_at' => ['sometimes', 'date'],
-            'ended_at' => ['sometimes', 'date'],
+            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'started_at' => ['sometimes', 'required', 'date'],
+            'ended_at' => ['nullable', 'date', 'after:started_at'],
             'type' => ['sometimes', 'in:manual,timer,pomodoro'],
-            'notes' => ['sometimes', 'nullable', 'string', 'max:280'],
+            'notes' => ['nullable', 'string', 'max:280'],
+            'label' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

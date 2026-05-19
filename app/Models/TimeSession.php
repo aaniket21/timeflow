@@ -23,6 +23,7 @@ class TimeSession extends Model
         'ended_at',
         'duration_seconds',
         'notes',
+        'label',
         'is_pomodoro',
         'type',
     ];
