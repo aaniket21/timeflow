@@ -132,14 +132,6 @@ const loadSessionLog = async (reset = false) => {
   }
 };
 
-watch(mainCategory, (newVal) => {
-  if (newVal === 'Focus Mode') {
-    mode.value = 'pomodoro';
-  } else {
-    mode.value = 'timer';
-  }
-});
-
 const startSession = async () => {
   isRunning.value = true;
   timerSeconds.value = 0;
@@ -149,16 +141,16 @@ const startSession = async () => {
   let finalProjectId = selectedProjectId.value || null;
 
   if (mainCategory.value === 'Activity') {
-    finalLabel = activityTitle.value || 'activity-notitle';
+    finalLabel = activityTitle.value ? `activity-${activityTitle.value}` : 'activity-untitled';
     finalProjectId = null;
   } else if (mainCategory.value === 'Other') {
-    finalLabel = otherTitle.value || 'other-notitle';
+    finalLabel = otherTitle.value ? `other-${otherTitle.value}` : 'other-untitled';
     finalProjectId = null;
   } else if (mainCategory.value === 'Focus Mode') {
-    finalLabel = null;
+    finalLabel = 'focus-untitled';
     finalProjectId = null;
   } else if (mainCategory.value === 'Project') {
-    if (!finalProjectId) finalLabel = 'project-notitle';
+    if (!finalProjectId) finalLabel = 'project-untitled';
   }
 
   try {
@@ -208,20 +200,20 @@ const loadActiveSession = async () => {
       sessionLabel.value = session.label || '';
       mode.value = session.type || 'timer';
       
-      if (session.type === 'pomodoro') {
+      if (session.label === 'focus-untitled' || session.type === 'pomodoro') {
         mainCategory.value = 'Focus Mode';
-      } else if (session.project_id) {
+      } else if (session.project_id || session.label === 'project-untitled') {
         mainCategory.value = 'Project';
-      } else if (session.label === 'project-notitle') {
-        mainCategory.value = 'Project';
-      } else if (session.label === 'activity-notitle') {
+      } else if (session.label && session.label.startsWith('activity-')) {
         mainCategory.value = 'Activity';
-      } else if (session.label === 'other-notitle') {
+        const name = session.label.replace('activity-', '');
+        activityTitle.value = name === 'untitled' ? '' : name;
+      } else if (session.label && session.label.startsWith('other-')) {
         mainCategory.value = 'Other';
+        const name = session.label.replace('other-', '');
+        otherTitle.value = name === 'untitled' ? '' : name;
       } else {
-        // Fallback custom titles to Other
-        mainCategory.value = 'Other';
-        otherTitle.value = session.label || '';
+        mainCategory.value = 'Project';
       }
 
       sessionNotes.value = session.notes || '';
@@ -430,26 +422,7 @@ onUnmounted(() => { stopTicking(); });
             <input class="text-input" type="text" placeholder="Enter title..." v-model="otherTitle" />
           </div>
 
-          <div class="mode-toggle">
-            <button
-              class="mode-pill"
-              :class="{ active: mode === 'timer' }"
-              type="button"
-              @click="setMode('timer')"
-            >
-              Timer
-            </button>
-            <button
-              class="mode-pill"
-              :class="{ active: mode === 'pomodoro' }"
-              type="button"
-              @click="setMode('pomodoro')"
-            >
-              Pomodoro
-            </button>
-          </div>
-
-          <div v-if="mode === 'timer'" class="tf-card timer-card">
+          <div class="tf-card timer-card">
             <div class="status-label" :class="{ running: isRunning }">{{ statusLabel }}</div>
             <div class="timer-display">{{ timerDisplay }}</div>
             <button class="primary-btn" :class="{ danger: isRunning }" type="button" @click="toggleTimer">
@@ -459,30 +432,6 @@ onUnmounted(() => { stopTicking(); });
             <div v-if="activeProject" class="field">
               <input class="text-input" type="text" placeholder="Add a label (optional)..." v-model="sessionLabel" />
             </div>
-          </div>
-
-          <div v-else class="tf-card pomodoro-card">
-            <div class="pomodoro-ring">
-              <svg viewBox="0 0 200 200" aria-hidden="true">
-                <circle class="ring-track" cx="100" cy="100" r="88" />
-                <circle class="ring-fill" cx="100" cy="100" r="88" />
-              </svg>
-              <div class="ring-time">{{ timerDisplay }}</div>
-            </div>
-            <div class="pomodoro-status">{{ pomodoroPhase === 'work' ? 'Work time' : 'Break time' }}</div>
-            <div class="pomodoro-dots">
-              <span
-                v-for="dot in pomodoroDots"
-                :key="dot.id"
-                class="pomodoro-dot"
-                :class="dot.state"
-              ></span>
-            </div>
-            <div class="pomodoro-actions">
-              <button class="primary-btn" type="button">Pause</button>
-              <button class="secondary-btn" type="button">Skip break</button>
-            </div>
-            <a class="outline-btn" href="/timer?focus=1">Enter Focus Mode</a>
           </div>
 
           <div class="tf-card notes-card">

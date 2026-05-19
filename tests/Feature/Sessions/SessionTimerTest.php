@@ -273,11 +273,11 @@ class SessionTimerTest extends TestCase
         $response = $this->postJson("/api/sessions/{$session->id}/stop");
 
         $response->assertOk()
-            ->assertJsonPath('meta.xp_gained', 20);
+            ->assertJsonPath('meta.xp_gained', 30);
 
         $user->refresh();
 
-        $this->assertSame(20, $user->xp_total);
+        $this->assertSame(30, $user->xp_total);
 
         $this->assertDatabaseHas('xp_transactions', [
             'user_id' => $user->id,
@@ -316,11 +316,11 @@ class SessionTimerTest extends TestCase
             ->assertJsonPath('data.session.type', 'pomodoro')
             ->assertJsonPath('data.session.is_pomodoro', true)
             ->assertJsonPath('data.session.duration_seconds', $expectedDuration)
-            ->assertJsonPath('meta.xp_gained', 20);
+            ->assertJsonPath('meta.xp_gained', 30);
 
         $user->refresh();
 
-        $this->assertSame(25, $user->xp_total);
+        $this->assertSame(35, $user->xp_total);
         $this->assertSame(1, $user->streak_current);
         $this->assertSame(1, $user->streak_longest);
         $this->assertSame(now()->toDateString(), $user->last_active_date);
@@ -354,12 +354,12 @@ class SessionTimerTest extends TestCase
         $response = $this->postJson("/api/sessions/{$session->id}/stop");
 
         $response->assertOk()
-            ->assertJsonPath('meta.xp_gained', 20)
+            ->assertJsonPath('meta.xp_gained', 30)
             ->assertJsonPath('meta.new_level', 2);
 
         $user->refresh();
 
-        $this->assertSame(215, $user->xp_total);
+        $this->assertSame(225, $user->xp_total);
         $this->assertSame(2, $user->level);
     }
 
