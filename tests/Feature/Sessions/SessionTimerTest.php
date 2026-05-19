@@ -55,6 +55,36 @@ class SessionTimerTest extends TestCase
         $this->assertStringContainsString('+05:30', $response->json('data.session.started_at'));
     }
 
+    public function test_stop_session_multiple_times_does_not_throw_unique_constraint(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        \App\Models\DailyChallenge::create([
+            'title' => 'Test Challenge',
+            'description' => 'Test',
+            'type' => 'hours_logged',
+            'target_value' => 0, // Instant complete
+            'xp_reward' => 10,
+        ]);
+        
+        $session = TimeSession::factory()->for($user)->create([
+            'project_id' => $project->id,
+            'started_at' => now()->subHours(2),
+            'ended_at' => null,
+            'type' => 'timer',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        // First stop should complete the challenge and give XP
+        $response1 = $this->postJson("/api/sessions/{$session->id}/stop");
+        $response1->assertOk();
+
+        // Second stop should not throw a 500 error due to unique constraint violation
+        $response2 = $this->postJson("/api/sessions/{$session->id}/stop");
+        $response2->assertOk();
+    }
+
     public function test_stop_session_sets_end_and_duration(): void
     {
         $user = User::factory()->create();

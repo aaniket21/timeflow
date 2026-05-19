@@ -136,15 +136,6 @@ class SessionController extends Controller
             return 0;
         }
 
-        $alreadyCompleted = UserChallengeCompletion::query()
-            ->where('user_id', $userId)
-            ->where('date', $date)
-            ->exists();
-
-        if ($alreadyCompleted) {
-            return 0;
-        }
-
         $meetsTarget = false;
 
         if ($challenge->type === 'hours_logged') {
@@ -159,17 +150,19 @@ class SessionController extends Controller
             return 0;
         }
 
-        UserChallengeCompletion::create([
-            'user_id' => $userId,
-            'challenge_id' => $challenge->id,
-            'date' => $date,
-            'completed_at' => now(),
-        ]);
+        $completion = UserChallengeCompletion::firstOrCreate(
+            ['user_id' => $userId, 'date' => Carbon::parse($date)->startOfDay()],
+            ['challenge_id' => $challenge->id, 'completed_at' => now()]
+        );
 
-        return $this->grantXp($userId, (int) $challenge->xp_reward, 'daily_challenge', [
-            'date' => $date,
-            'challenge_id' => $challenge->id,
-        ]);
+        if ($completion->wasRecentlyCreated) {
+            return $this->grantXp($userId, (int) $challenge->xp_reward, 'daily_challenge', [
+                'date' => $date,
+                'challenge_id' => $challenge->id,
+            ]);
+        }
+
+        return 0;
     }
 
     private function awardBadge(int $userId, string $slug, array &$badgesEarned, int &$xpGained): void
