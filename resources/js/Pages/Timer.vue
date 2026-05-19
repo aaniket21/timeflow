@@ -139,7 +139,7 @@ const startSession = async () => {
       label: sessionLabel.value || null,
       type: mode.value,
     });
-    activeSessionId.value = res.data?.data?.id || null;
+    activeSessionId.value = res.data?.data?.session?.id || null;
     if (window.TimeflowToast) window.TimeflowToast.success('Session started');
   } catch (e) {
     console.warn('Start session API failed (timer running locally)', e);
