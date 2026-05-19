@@ -107,7 +107,7 @@ const formatDateInput = (date) => {
 .plans-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
+
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   color: var(--tf-text-primary);
 }
@@ -116,16 +116,16 @@ const formatDateInput = (date) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
@@ -136,20 +136,20 @@ const formatDateInput = (date) => {
 }
 
 .plan-xp {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   color: #5b3fd4;
   background: rgba(124, 92, 252, 0.12);
   border: 1px solid rgba(124, 92, 252, 0.22);
-  padding: 2px 6px;
-  border-radius: 999px;
+  padding: 3px 8px;
+  border-radius: 1249px;
 }
 
 .plan-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  padding: 6px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--tf-border-default);
 }
 
@@ -158,10 +158,10 @@ const formatDateInput = (date) => {
 }
 
 .plan-check {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1.5px solid var(--tf-border-default);
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 2px solid var(--tf-border-default);
 }
 
 .plan-check.done {
@@ -170,7 +170,7 @@ const formatDateInput = (date) => {
 }
 
 .plan-text {
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .plan-text.done {
@@ -179,8 +179,8 @@ const formatDateInput = (date) => {
 }
 
 .empty-state {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-hint);
-  padding: 12px 0;
+  padding: 15px 0;
 }
 </style>

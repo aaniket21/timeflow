@@ -135,7 +135,7 @@ onMounted(() => {
 <style scoped>
 .profile-shell {
   min-height: 100vh;
-  padding: 32px 28px 60px;
+  padding: 40px 35px 75px;
   background: radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 55%),
     radial-gradient(circle at 40% 10%, rgba(234, 179, 8, 0.12), transparent 50%),
     #f9f8f4;
@@ -145,57 +145,57 @@ onMounted(() => {
 
 .hero {
   display: flex;
-  gap: 24px;
+  gap: 30px;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 28px;
+  margin-bottom: 35px;
 }
 
 .overline {
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  font-size: 11px;
+  font-size: 14px;
   color: #64748b;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .hero h1 {
-  font-size: 32px;
-  margin: 0 0 8px;
+  font-size: 40px;
+  margin: 0 0 10px;
 }
 
 .hero p {
   margin: 0;
   color: #475569;
-  max-width: 360px;
+  max-width: 450px;
 }
 
 .level-card {
   background: #0f172a;
   color: #e2e8f0;
-  padding: 18px 20px;
-  border-radius: 16px;
-  min-width: 240px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+  padding: 23px 25px;
+  border-radius: 20px;
+  min-width: 300px;
+  box-shadow: 0 23px 50px rgba(15, 23, 42, 0.2);
 }
 
 .level-title {
-  font-size: 14px;
+  font-size: 18px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #94a3b8;
 }
 
 .level-xp {
-  font-size: 28px;
+  font-size: 35px;
   font-weight: 700;
-  margin: 8px 0 12px;
+  margin: 10px 0 15px;
 }
 
 .level-bar {
-  height: 6px;
-  border-radius: 999px;
+  height: 8px;
+  border-radius: 1249px;
   background: rgba(148, 163, 184, 0.2);
   overflow: hidden;
 }
@@ -208,79 +208,79 @@ onMounted(() => {
 .level-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  margin-top: 10px;
+  font-size: 15px;
+  margin-top: 13px;
   color: #cbd5f5;
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(225px, 1fr));
+  gap: 20px;
+  margin-bottom: 35px;
 }
 
 .stat-card {
-  padding: 16px 18px;
+  padding: 20px 23px;
   background: #ffffff;
-  border-radius: 14px;
+  border-radius: 18px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.04);
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 15px;
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: #64748b;
 }
 
 .stat-value {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
-  margin: 10px 0 4px;
+  margin: 13px 0 5px;
 }
 
 .stat-sub {
-  font-size: 13px;
+  font-size: 16px;
   color: #475569;
 }
 
 .celebration {
   position: relative;
   overflow: hidden;
-  padding: 18px 20px;
-  border-radius: 16px;
+  padding: 23px 25px;
+  border-radius: 20px;
   background: #0f766e;
   color: #ecfeff;
   display: flex;
   align-items: center;
-  gap: 18px;
-  box-shadow: 0 16px 30px rgba(15, 118, 110, 0.25);
+  gap: 23px;
+  box-shadow: 0 20px 38px rgba(15, 118, 110, 0.25);
 }
 
 .burst {
-  width: 42px;
-  height: 42px;
+  width: 53px;
+  height: 53px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 255, 255, 0.9), transparent 70%);
-  box-shadow: 0 0 0 6px rgba(234, 179, 8, 0.25), 0 0 0 14px rgba(234, 179, 8, 0.18);
+  box-shadow: 0 0 0 8px rgba(234, 179, 8, 0.25), 0 0 0 18px rgba(234, 179, 8, 0.18);
   animation: pulse 2.8s ease-in-out infinite;
 }
 
 .celebration-title {
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 700;
 }
 
 .celebration-detail {
-  font-size: 14px;
-  margin-top: 4px;
+  font-size: 18px;
+  margin-top: 5px;
 }
 
 .celebration-action {
-  font-size: 12px;
-  margin-top: 8px;
+  font-size: 15px;
+  margin-top: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.7);

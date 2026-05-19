@@ -14,7 +14,7 @@ class StartSessionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'project_id' => ['required', 'integer', 'exists:projects,id'],
+            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'started_at' => ['nullable', 'date'],
             'type' => ['nullable', 'in:manual,timer,pomodoro'],

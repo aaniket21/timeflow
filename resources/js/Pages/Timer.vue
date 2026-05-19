@@ -1,6 +1,6 @@
 <script setup>
 import axios from 'axios';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 
 const props = defineProps({
@@ -19,6 +19,12 @@ const selectedProjectId = ref('');
 const sessionLabel = ref('');
 const sessionNotes = ref('');
 const activeSessionId = ref(null);
+
+watch(sessionNotes, (newVal) => {
+  if (activeSessionId.value) {
+    localStorage.setItem(`tf_notes_${activeSessionId.value}`, newVal);
+  }
+});
 const timerSeconds = ref(0);
 const pomodoroSeconds = ref(25 * 60);
 const pomodoroPhase = ref('work');
@@ -110,6 +116,7 @@ const loadSessionLog = async (reset = false) => {
           color: s.color || 'violet',
           start: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
           duration: formatDuration(s.duration_seconds),
+          notes: s.notes || '',
           type: s.type || 'timer',
         });
       });
@@ -147,6 +154,7 @@ const stopSession = async () => {
       await axios.post(`/api/sessions/${activeSessionId.value}/stop`, {
         notes: sessionNotes.value || null,
       });
+      localStorage.removeItem(`tf_notes_${activeSessionId.value}`);
     } catch (e) {
       console.warn('Stop session failed', e);
     }
@@ -159,6 +167,34 @@ const stopSession = async () => {
 
 const toggleTimer = () => {
   if (isRunning.value) { stopSession(); } else { startSession(); }
+};
+
+
+const loadActiveSession = async () => {
+  try {
+    const res = await axios.get('/api/sessions/active');
+    const session = res.data?.data?.session;
+    if (session) {
+      activeSessionId.value = session.id;
+      selectedProjectId.value = session.project_id || '';
+      sessionLabel.value = session.label || '';
+      mode.value = session.type || 'timer';
+      
+      const savedNotes = localStorage.getItem(`tf_notes_${session.id}`);
+      if (savedNotes !== null) {
+        sessionNotes.value = savedNotes;
+      } else if (session.notes) {
+        sessionNotes.value = session.notes;
+      }
+
+      const startedAt = new Date(session.started_at).getTime();
+      timerSeconds.value = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      isRunning.value = true;
+      startTicking();
+    }
+  } catch (e) {
+    console.warn('Load active session failed', e);
+  }
 };
 
 const startTicking = () => {
@@ -203,6 +239,36 @@ const loadMoreLogs = () => {
   loadSessionLog();
 };
 
+
+const editingSession = ref(null);
+const editNotes = ref('');
+const isEditModalOpen = ref(false);
+
+const openEditModal = (session) => {
+  editingSession.value = session;
+  editNotes.value = session.notes || '';
+  isEditModalOpen.value = true;
+};
+
+const closeEditModal = () => {
+  isEditModalOpen.value = false;
+  editingSession.value = null;
+  editNotes.value = '';
+};
+
+const saveSessionEdit = async () => {
+  if (!editingSession.value) return;
+  try {
+    await axios.put('/api/sessions/' + editingSession.value.id, {
+      notes: editNotes.value,
+    });
+    closeEditModal();
+    loadSessionLog(true);
+  } catch (e) {
+    console.warn('Edit session failed', e);
+  }
+};
+
 const saveManualEntry = async () => {
   try {
     await axios.post('/api/sessions/manual', manualForm.value);
@@ -233,6 +299,7 @@ function formatDuration(sec) {
 onMounted(() => {
   loadProjects();
   loadSessionLog(true);
+  loadActiveSession();
 });
 
 onUnmounted(() => { stopTicking(); });
@@ -358,71 +425,80 @@ onUnmounted(() => { stopTicking(); });
             <textarea class="notes-input" placeholder="Add session notes..." v-model="sessionNotes"></textarea>
           </div>
 
-          <div class="tf-card manual-card">
-            <button class="manual-toggle" type="button" @click="manualOpen = !manualOpen">
-              <span>Add past session</span>
-              <i class="ti" :class="manualOpen ? 'ti-chevron-up' : 'ti-chevron-down'" aria-hidden="true"></i>
-            </button>
-            <div v-if="manualOpen" class="manual-fields">
-              <div class="field">
-                <label class="field-label">Project</label>
-                <select class="text-input" v-model="manualForm.project_id">
-                  <option value="">Select project</option>
-                  <option v-for="project in projects" :key="project.id" :value="project.id">
-                    {{ project.name }}
-                  </option>
-                </select>
-              </div>
-              <div class="field-grid">
-                <div class="field">
-                  <label class="field-label">Date</label>
-                  <input class="text-input" type="date" v-model="manualForm.date" />
-                </div>
-                <div class="field">
-                  <label class="field-label">Start</label>
-                  <input class="text-input" type="time" v-model="manualForm.start" />
-                </div>
-                <div class="field">
-                  <label class="field-label">End</label>
-                  <input class="text-input" type="time" v-model="manualForm.end" />
-                </div>
-              </div>
-              <button class="secondary-btn" type="button" @click="saveManualEntry">Save session</button>
+          </section>
+
+        
+        <section v-else class="tab-panel log-panel">
+          <div class="tf-card history-card">
+            <div class="history-table-wrapper">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Date & Time</th>
+                    <th>Project / Category</th>
+                    <th>Duration</th>
+                    <th>Notes</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template v-for="group in sessionGroups" :key="group.label">
+                    <tr class="group-row"><td colspan="5">{{ group.label }}</td></tr>
+                    <tr v-for="session in group.sessions" :key="session.id">
+                      <td>
+                        <div class="log-time">{{ session.start }}</div>
+                      </td>
+                      <td>
+                        <div class="log-left">
+                          <span class="color-dot" :class="'dot-' + session.color"></span>
+                          <div>
+                            <div class="log-name">{{ session.project }}</div>
+                            <div class="log-meta"><span class="category-chip">{{ session.category }}</span></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td><div class="log-duration">{{ session.duration }}</div></td>
+                      <td><div class="log-notes" :title="session.notes">{{ session.notes || '-' }}</div></td>
+                      <td>
+                        <div class="log-actions-table">
+                          <button class="tf-icon-button" type="button" @click="openEditModal(session)" title="Edit Notes">
+                            <i class="ti ti-edit"></i>
+                          </button>
+                          <button class="tf-icon-button text-danger" type="button" @click="deleteSession(session.id)" title="Delete Session">
+                            <i class="ti ti-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <tr v-if="sessionGroups.length === 0">
+                    <td colspan="5" style="text-align:center; padding: 20px; color: var(--tf-text-secondary);">No past sessions found.</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
+            <button v-if="hasMoreLogs" class="load-more" style="margin-top: 15px;" type="button" @click="loadMoreLogs">Load more</button>
           </div>
         </section>
 
-        <section v-else class="tab-panel log-panel">
-          <div v-for="group in sessionGroups" :key="group.label" class="log-group">
-            <div class="log-header">{{ group.label }}</div>
-            <div v-for="session in group.sessions" :key="session.id" class="log-row">
-              <div class="log-left">
-                <span class="color-dot" :class="'dot-' + session.color"></span>
-                <div>
-                  <div class="log-name">{{ session.project }}</div>
-                  <div class="log-meta">
-                    <span class="category-chip">{{ session.category }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="log-time">{{ session.start }}</div>
-              <div class="log-duration">{{ session.duration }}</div>
-              <div class="log-type">
-                <i class="ti" :class="session.type === 'pomodoro' ? 'ti-alarm' : 'ti-clock'" aria-hidden="true"></i>
-              </div>
-              <div class="log-actions">
-                <button class="tf-icon-button" type="button" aria-label="Edit session">
-                  <i class="ti ti-edit" aria-hidden="true"></i>
-                </button>
-                <button class="tf-icon-button" type="button" aria-label="Delete session" @click="deleteSession(session.id)">
-                  <i class="ti ti-trash" aria-hidden="true"></i>
-                </button>
-              </div>
-            </div>
+    
+      <div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Edit Session Notes</h3>
+            <button class="tf-icon-button" type="button" @click="closeEditModal"><i class="ti ti-x"></i></button>
           </div>
-          <button v-if="hasMoreLogs" class="load-more" type="button" @click="loadMoreLogs">Load more</button>
-        </section>
+          <div class="modal-body">
+            <textarea class="text-input notes-input" style="min-height: 100px; width: 100%; resize: vertical;" v-model="editNotes" placeholder="Enter session notes..."></textarea>
+          </div>
+          <div class="modal-footer" style="display:flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+            <button class="outline-btn" type="button" @click="closeEditModal">Cancel</button>
+            <button class="primary-btn" type="button" @click="saveSessionEdit">Save Changes</button>
+          </div>
+        </div>
+      </div>
     </AppShell>
+
   </div>
 </template>
 
@@ -932,4 +1008,74 @@ onUnmounted(() => { stopTicking(); });
     opacity: 1;
   }
 }
+
+.history-table-wrapper {
+  overflow-x: auto;
+}
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 15px;
+}
+.history-table th {
+  padding: 13px;
+  border-bottom: 2px solid var(--tf-border-default);
+  color: var(--tf-text-secondary);
+  font-weight: 600;
+}
+.history-table td {
+  padding: 15px 13px;
+  border-bottom: 1px solid var(--tf-border-default);
+  vertical-align: middle;
+}
+.group-row td {
+  background: var(--tf-bg-card-alt);
+  font-weight: 700;
+  color: var(--tf-text-secondary);
+  padding: 10px 13px;
+  font-size: 14px;
+}
+.log-actions-table {
+  display: flex;
+  gap: 10px;
+}
+.log-notes {
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--tf-text-secondary);
+}
+.text-danger {
+  color: var(--tf-red) !important;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: var(--tf-bg-card);
+  padding: 25px;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
 </style>
+

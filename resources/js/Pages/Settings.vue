@@ -301,7 +301,6 @@ onMounted(() => {
 .settings-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   color: var(--tf-text-primary);
 }
@@ -310,39 +309,39 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .settings-layout {
   display: grid;
-  grid-template-columns: 190px 1fr;
-  gap: 12px;
-  margin-top: 12px;
+  grid-template-columns: 238px 1fr;
+  gap: 15px;
+  margin-top: 15px;
 }
 
 .settings-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .settings-link {
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 10px 13px;
+  border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
   text-align: left;
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
   cursor: pointer;
 }
@@ -356,44 +355,44 @@ onMounted(() => {
 .settings-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 15px;
 }
 
 .panel-title {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .profile-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 15px;
+  margin-bottom: 15px;
 }
 
 .avatar-lg {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--tf-violet), var(--tf-mint));
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 20px;
+  font-size: 25px;
   font-weight: 800;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 13px;
 }
 
 .field-label {
-  font-size: 10px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--tf-text-hint);
@@ -401,77 +400,77 @@ onMounted(() => {
 
 .text-input {
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 10px 13px;
+  border-radius: 10px;
   border: 1px solid var(--tf-border-default);
   background: var(--tf-bg-card-alt);
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .primary-btn {
-  height: 38px;
-  padding: 0 14px;
-  border-radius: 9px;
+  height: 48px;
+  padding: 0 18px;
+  border-radius: 11px;
   border: none;
   background: var(--tf-violet);
   color: #fff;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   align-self: flex-start;
 }
 
 .outline-btn {
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 9px;
+  height: 45px;
+  padding: 0 15px;
+  border-radius: 11px;
   border: 1px solid var(--tf-border-default);
   background: transparent;
   color: var(--tf-text-secondary);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .danger-btn {
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 9px;
+  height: 45px;
+  padding: 0 15px;
+  border-radius: 11px;
   border: 1px solid rgba(239, 68, 68, 0.4);
   background: transparent;
   color: var(--tf-red);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .toggle-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
-  padding: 6px 0;
+  padding: 8px 0;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1125px) {
   .settings-layout {
     grid-template-columns: 1fr;
   }
 }
 
 .field-hint {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--tf-text-hint);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .toggle-switch {
   position: relative;
   display: inline-block;
-  width: 40px;
-  height: 22px;
+  width: 50px;
+  height: 28px;
   flex-shrink: 0;
 }
 
@@ -486,17 +485,17 @@ onMounted(() => {
   cursor: pointer;
   inset: 0;
   background: var(--tf-border-strong);
-  border-radius: 22px;
+  border-radius: 28px;
   transition: background 0.3s ease;
 }
 
 .toggle-slider::before {
   content: '';
   position: absolute;
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  bottom: 3px;
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 4px;
   background: #fff;
   border-radius: 50%;
   transition: transform 0.3s ease;
@@ -507,6 +506,6 @@ onMounted(() => {
 }
 
 .toggle-switch input:checked + .toggle-slider::before {
-  transform: translateX(18px);
+  transform: translateX(23px);
 }
 </style>

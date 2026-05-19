@@ -23,44 +23,44 @@ const emit = defineEmits(['action']);
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 40px 20px;
+  padding: 50px 25px;
   text-align: center;
 }
 
 .empty-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 60px;
+  height: 60px;
+  border-radius: 15px;
   background: rgba(124, 92, 252, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 28px;
   color: var(--tf-violet);
-  margin-bottom: 12px;
+  margin-bottom: 15px;
 }
 
 .empty-heading {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--tf-text-primary);
 }
 
 .empty-desc {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
-  margin-top: 4px;
-  max-width: 260px;
+  margin-top: 5px;
+  max-width: 325px;
 }
 
 .empty-cta {
-  margin-top: 14px;
-  padding: 8px 18px;
-  border-radius: 9px;
+  margin-top: 18px;
+  padding: 10px 23px;
+  border-radius: 11px;
   border: none;
   background: var(--tf-violet);
   color: #fff;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s ease;

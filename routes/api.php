@@ -57,10 +57,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/gamification/leaderboard-opt-in', [GamificationController::class, 'updateLeaderboardOptIn']);
     Route::get('/sessions/active', [SessionController::class, 'active']);
     Route::get('/sessions/recent', [SessionController::class, 'recent']);
+    Route::get('/sessions', [SessionController::class, 'index']);
     Route::post('/sessions/start', [SessionController::class, 'start']);
     Route::post('/sessions', [SessionController::class, 'store']);
     Route::put('/sessions/{session}', [SessionController::class, 'update']);
     Route::post('/sessions/{session}/stop', [SessionController::class, 'stop']);
+    Route::delete('/sessions/{session}', [SessionController::class, 'destroy']);
     Route::post('/reports/generate', [ReportController::class, 'generate']);
     Route::get('/reports/{report}/download', [ReportController::class, 'download']);
     Route::put('/settings/profile', [SettingsController::class, 'updateProfile']);

@@ -584,7 +584,7 @@ onUnmounted(() => {
       <div class="tf-card">
         <div class="recent-header">
           <div class="recent-title">Recent sessions</div>
-          <button class="link-btn" type="button" @click="navigateTo('/timer')">See all →</button>
+          <button class="link-btn" type="button" @click="navigateTo('/timer')">See all â†’</button>
         </div>
         <div v-for="session in recentSessions" :key="session.id" class="recent-row">
           <span class="color-dot" :style="{ background: session.color }"></span>
@@ -613,7 +613,6 @@ onUnmounted(() => {
 .dashboard-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   color: var(--tf-text-primary);
 }
@@ -622,34 +621,34 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .exam-block,
 .timetable-block {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .exam-chips {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .exam-chip {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
+  padding: 5px 13px;
+  border-radius: 1249px;
+  font-size: 14px;
   font-weight: 600;
   border: 1px solid var(--tf-border-default);
   color: var(--tf-text-secondary);
@@ -677,54 +676,54 @@ onUnmounted(() => {
 
 .timetable-strip {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   overflow-x: auto;
 }
 
 .timetable-item {
-  min-width: 90px;
-  padding: 6px 8px;
-  border-radius: 8px;
+  min-width: 113px;
+  padding: 8px 10px;
+  border-radius: 10px;
   border: 1px solid;
 }
 
 .timetable-time {
-  font-size: 9px;
+  font-size: 11px;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
 .timetable-name {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .timetable-type {
-  font-size: 9px;
+  font-size: 11px;
   opacity: 0.7;
 }
 
 .grid-two {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 13px;
+  margin-top: 15px;
 }
 
 .focus-row {
   display: flex;
-  gap: 12px;
+  gap: 15px;
   align-items: center;
 }
 
 .focus-ring {
   position: relative;
-  width: 72px;
-  height: 72px;
+  width: 90px;
+  height: 90px;
 }
 
 .focus-ring svg {
-  width: 72px;
-  height: 72px;
+  width: 90px;
+  height: 90px;
   transform: rotate(-90deg);
 }
 
@@ -752,26 +751,26 @@ onUnmounted(() => {
 }
 
 .focus-hours {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
 .focus-label {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--tf-text-hint);
 }
 
 .focus-stats {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 10px;
+  gap: 5px;
+  font-size: 13px;
   color: var(--tf-text-secondary);
 }
 
 .focus-percent {
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 800;
   color: var(--tf-violet);
 }
@@ -788,29 +787,29 @@ onUnmounted(() => {
 }
 
 .live-tag {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--tf-mint);
 }
 
 .live-project {
-  margin-top: 6px;
-  font-size: 11px;
+  margin-top: 8px;
+  font-size: 14px;
   color: var(--tf-mint);
 }
 
 .live-timer {
-  font-size: 28px;
+  font-size: 35px;
   font-weight: 600;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
-  margin-top: 4px;
+  margin-top: 5px;
 }
 
 .live-bar {
-  height: 3px;
-  border-radius: 2px;
+  height: 4px;
+  border-radius: 3px;
   background: rgba(14, 207, 164, 0.2);
-  margin-top: 10px;
+  margin-top: 13px;
   overflow: hidden;
 }
 
@@ -828,20 +827,20 @@ onUnmounted(() => {
 }
 
 .plan-xp {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   color: #5b3fd4;
   background: rgba(124, 92, 252, 0.12);
   border: 1px solid rgba(124, 92, 252, 0.22);
-  padding: 2px 6px;
-  border-radius: 999px;
+  padding: 3px 8px;
+  border-radius: 1249px;
 }
 
 .plan-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  padding: 6px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--tf-border-default);
 }
 
@@ -850,10 +849,10 @@ onUnmounted(() => {
 }
 
 .plan-check {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1.5px solid var(--tf-border-default);
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 2px solid var(--tf-border-default);
 }
 
 .plan-check.done {
@@ -862,7 +861,7 @@ onUnmounted(() => {
 }
 
 .plan-text {
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .plan-text.done {
@@ -872,32 +871,32 @@ onUnmounted(() => {
 
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 13px;
+  margin-top: 15px;
 }
 
 .stat-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .stat-label {
-  font-size: 9px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--tf-text-hint);
 }
 
 .stat-value {
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 700;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
 .stat-meta {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-text-secondary);
 }
 
@@ -908,26 +907,26 @@ onUnmounted(() => {
 }
 
 .xp-title {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .xp-level {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-text-secondary);
 }
 
 .xp-total {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
 .xp-bar {
-  height: 4px;
-  border-radius: 999px;
+  height: 5px;
+  border-radius: 1249px;
   background: rgba(124, 92, 252, 0.15);
-  margin-top: 8px;
+  margin-top: 10px;
   overflow: hidden;
 }
 
@@ -938,35 +937,35 @@ onUnmounted(() => {
 }
 
 .xp-meta {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-text-hint);
-  margin-top: 4px;
+  margin-top: 5px;
 }
 
 .challenge-label {
-  font-size: 9px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--tf-text-hint);
 }
 
 .challenge-title {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
-  margin-top: 4px;
+  margin-top: 5px;
 }
 
 .challenge-progress {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 8px;
+  gap: 5px;
+  margin-top: 10px;
 }
 
 .challenge-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
   background: rgba(80, 60, 20, 0.12);
 }
 
@@ -975,22 +974,22 @@ onUnmounted(() => {
 }
 
 .challenge-xp {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--tf-amber);
   margin-left: auto;
 }
 
 .habits-header {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .habit-row {
   display: grid;
-  grid-template-columns: 1fr 24px 40px;
+  grid-template-columns: 1fr 30px 50px;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+  gap: 10px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--tf-border-default);
 }
 
@@ -999,80 +998,80 @@ onUnmounted(() => {
 }
 
 .habit-name {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .habit-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
+  width: 23px;
+  height: 23px;
+  border-radius: 6px;
   border: 1px solid;
 }
 
 .habit-streak {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-amber);
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
 .quick-start {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .quick-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 .quick-btn {
-  height: 60px;
-  border-radius: 10px;
+  height: 75px;
+  border-radius: 13px;
   border: 1px solid var(--tf-border-default);
   background: var(--tf-bg-card);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   color: var(--tf-text-primary);
 }
 
 .heatmap {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .heatmap-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .heatmap-title {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .heatmap-scale {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--tf-text-hint);
 }
 
 .heatmap-grid {
   display: flex;
-  gap: 3px;
+  gap: 4px;
 }
 
 .heatmap-col {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .heatmap-cell {
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
   background: rgba(80, 60, 20, 0.1);
 }
 
@@ -1085,28 +1084,28 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .recent-title {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .link-btn {
   border: none;
   background: transparent;
-  font-size: 11px;
+  font-size: 14px;
   color: #5b3fd4;
   cursor: pointer;
 }
 
 .recent-row {
   display: grid;
-  grid-template-columns: 10px 1fr auto;
+  grid-template-columns: 13px 1fr auto;
   align-items: center;
-  gap: 10px;
-  padding: 6px 0;
+  gap: 13px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--tf-border-default);
 }
 
@@ -1115,41 +1114,41 @@ onUnmounted(() => {
 }
 
 .recent-name {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .recent-meta {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-text-hint);
 }
 
 .recent-duration {
-  font-size: 11px;
+  font-size: 14px;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
   color: var(--tf-text-secondary);
 }
 
 .insights {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .insight-card {
-  margin-top: 6px;
-  padding: 10px 12px;
-  border-left: 2px solid var(--tf-violet);
+  margin-top: 8px;
+  padding: 13px 15px;
+  border-left: 3px solid var(--tf-violet);
   background: rgba(124, 92, 252, 0.08);
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 13px;
 }
 
 .insight-dismiss {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
   color: var(--tf-text-hint);
@@ -1157,7 +1156,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 5px;
   flex-shrink: 0;
 }
 
@@ -1167,23 +1166,23 @@ onUnmounted(() => {
 }
 
 .outline-btn {
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 8px;
+  height: 38px;
+  padding: 0 13px;
+  border-radius: 10px;
   border: 1px solid var(--tf-border-default);
   background: transparent;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--tf-text-secondary);
   cursor: pointer;
 }
 
 .color-dot {
-  width: 7px;
-  height: 7px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1125px) {
   .quick-grid {
     grid-template-columns: 1fr;
   }

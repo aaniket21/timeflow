@@ -64,25 +64,25 @@ const typeColors = {
 <style>
 .toast-container {
   position: fixed;
-  top: 16px;
-  right: 16px;
+  top: 20px;
+  right: 20px;
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 300px;
+  gap: 10px;
+  width: 375px;
   pointer-events: none;
 }
 
 .toast {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  gap: 13px;
+  padding: 13px 15px;
+  border-radius: 13px;
   background: var(--tf-bg-card);
   border: 1px solid var(--tf-border-default);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   pointer-events: all;
   animation: toast-in 0.3s ease forwards;
 }
@@ -92,23 +92,23 @@ const typeColors = {
 }
 
 .toast-strip {
-  width: 3px;
-  height: 24px;
-  border-radius: 2px;
+  width: 4px;
+  height: 30px;
+  border-radius: 3px;
   flex-shrink: 0;
 }
 
 .toast-message {
   flex: 1;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--tf-text-primary);
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .toast-close {
-  width: 20px;
-  height: 20px;
+  width: 25px;
+  height: 25px;
   border: none;
   background: transparent;
   color: var(--tf-text-hint);
@@ -116,7 +116,7 @@ const typeColors = {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 5px;
   flex-shrink: 0;
 }
 
@@ -128,7 +128,7 @@ const typeColors = {
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateX(20px);
+    transform: translateX(25px);
   }
   to {
     opacity: 1;
@@ -143,7 +143,7 @@ const typeColors = {
   }
   to {
     opacity: 0;
-    transform: translateX(20px);
+    transform: translateX(25px);
   }
 }
 </style>

@@ -1,7 +1,7 @@
 <script setup>
 defineProps({
   open: { type: Boolean, default: false },
-  width: { type: String, default: '440px' },
+  width: { type: String, default: '550px' },
   title: { type: String, default: '' },
 });
 
@@ -42,16 +42,16 @@ const close = () => emit('close');
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  padding: 20px;
+  backdrop-filter: blur(5px);
+  padding: 25px;
 }
 
 .modal-panel {
   width: 100%;
   background: var(--tf-bg-card);
   border: 1px solid var(--tf-border-default);
-  border-radius: 14px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
   overflow: hidden;
   font-family: 'Plus Jakarta Sans', sans-serif;
   color: var(--tf-text-primary);
@@ -61,18 +61,18 @@ const close = () => emit('close');
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 18px 12px;
+  padding: 20px 23px 15px;
   border-bottom: 1px solid var(--tf-border-default);
 }
 
 .modal-title {
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 700;
 }
 
 .modal-close {
-  width: 28px;
-  height: 28px;
+  width: 35px;
+  height: 35px;
   border: none;
   background: transparent;
   color: var(--tf-text-hint);
@@ -80,7 +80,7 @@ const close = () => emit('close');
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .modal-close:hover {
@@ -89,14 +89,14 @@ const close = () => emit('close');
 }
 
 .modal-body {
-  padding: 16px 18px;
+  padding: 20px 23px;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 18px 16px;
+  gap: 10px;
+  padding: 15px 23px 20px;
   border-top: 1px solid var(--tf-border-default);
 }
 
@@ -117,10 +117,10 @@ const close = () => emit('close');
 }
 
 .modal-enter-from .modal-panel {
-  transform: scale(0.95) translateY(8px);
+  transform: scale(0.95) translateY(10px);
 }
 
 .modal-leave-to .modal-panel {
-  transform: scale(0.95) translateY(8px);
+  transform: scale(0.95) translateY(10px);
 }
 </style>

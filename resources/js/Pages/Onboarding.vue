@@ -84,29 +84,29 @@ const skipOnboarding = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 25px;
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   color: var(--tf-text-primary);
 }
 
 .onboard-card {
-  width: 480px;
+  width: 600px;
   max-width: 100%;
   background: var(--tf-bg-card);
   border: 1px solid var(--tf-border-default);
-  border-radius: 16px;
-  padding: 32px;
+  border-radius: 20px;
+  padding: 40px;
 }
 
 .progress-dots {
   display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 25px;
 }
 
 .progress-dots .dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: 1px solid var(--tf-border-default);
 }
@@ -117,79 +117,79 @@ const skipOnboarding = () => {
 }
 
 .title {
-  font-size: 20px;
+  font-size: 25px;
   font-weight: 800;
 }
 
 .subtitle {
-  font-size: 13px;
+  font-size: 16px;
   color: var(--tf-text-secondary);
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .role-list {
   display: grid;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 13px;
+  margin-top: 20px;
 }
 
 .role-card {
-  padding: 14px;
-  border-radius: 10px;
+  padding: 18px;
+  border-radius: 13px;
   border: 1px solid var(--tf-border-default);
   background: transparent;
-  font-size: 13px;
+  font-size: 16px;
   text-align: left;
   cursor: pointer;
 }
 
 .primary-btn {
-  margin-top: 16px;
+  margin-top: 20px;
   width: 100%;
-  height: 44px;
-  border-radius: 12px;
+  height: 55px;
+  border-radius: 15px;
   border: none;
   background: var(--tf-violet);
   color: #fff;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .goal-value {
-  font-size: 44px;
+  font-size: 55px;
   font-weight: 700;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
   color: var(--tf-violet);
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
 .goal-slider {
   width: 100%;
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .mini-form {
   display: grid;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 13px;
+  margin-top: 20px;
 }
 
 .text-input {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 13px 15px;
+  border-radius: 10px;
   border: 1px solid var(--tf-border-default);
   background: var(--tf-bg-card-alt);
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .link-btn {
-  margin-top: 10px;
+  margin-top: 13px;
   border: none;
   background: transparent;
   color: var(--tf-text-secondary);
-  font-size: 12px;
+  font-size: 15px;
   cursor: pointer;
 }
 </style>

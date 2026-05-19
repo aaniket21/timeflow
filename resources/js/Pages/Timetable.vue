@@ -175,7 +175,7 @@ const toggleDay = (dayNum) => {
             :style="{
               background: block.color,
               top: (block.start - gridStartHour) * slotHeight + 'px',
-              left: `calc(44px + (${block.dayIndex}) * ((100% - 44px) / 7))`,
+              left: `calc(55px + (${block.dayIndex}) * ((100% - 55px) / 7))`,
               height: block.duration * slotHeight + 'px'
             }"
           >
@@ -214,7 +214,7 @@ const toggleDay = (dayNum) => {
         </div>
         <div class="field">
           <label class="field-label">Days</label>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button v-for="(d, i) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="i" type="button" class="outline-btn" :style="{ background: blockForm.days_of_week.includes(i+1) ? 'var(--tf-violet)' : 'transparent', color: blockForm.days_of_week.includes(i+1) ? '#fff' : 'var(--tf-text-secondary)' }" @click="toggleDay(i+1)">{{ d }}</button>
           </div>
         </div>
@@ -231,7 +231,7 @@ const toggleDay = (dayNum) => {
 .timetable-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
+
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   color: var(--tf-text-primary);
 }
@@ -240,37 +240,37 @@ const toggleDay = (dayNum) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .week-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 12px 0;
+  gap: 10px;
+  margin: 15px 0;
 }
 
 .nav-btn,
 .outline-btn {
-  height: 36px;
-  border-radius: 10px;
+  height: 45px;
+  border-radius: 13px;
   border: 1px solid var(--tf-border-default);
   background: transparent;
   color: var(--tf-text-secondary);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  padding: 0 12px;
+  padding: 0 15px;
 }
 
 .timetable-grid {
@@ -280,15 +280,15 @@ const toggleDay = (dayNum) => {
 
 .grid-header {
   display: grid;
-  grid-template-columns: 44px repeat(7, 1fr);
+  grid-template-columns: 55px repeat(7, 1fr);
   background: var(--tf-bg-card-alt);
   border-bottom: 1px solid var(--tf-border-default);
 }
 
 .day-header {
   text-align: center;
-  padding: 7px 4px;
-  font-size: 10px;
+  padding: 9px 5px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--tf-text-secondary);
 }
@@ -299,16 +299,16 @@ const toggleDay = (dayNum) => {
 
 .time-row {
   display: grid;
-  grid-template-columns: 44px repeat(7, 1fr);
-  height: 36px;
+  grid-template-columns: 55px repeat(7, 1fr);
+  height: 45px;
   border-bottom: 1px solid var(--tf-border-default);
 }
 
 .time-label {
-  font-size: 9px;
+  font-size: 11px;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
   text-align: right;
-  padding-right: 6px;
+  padding-right: 8px;
   color: var(--tf-text-hint);
 }
 
@@ -318,33 +318,33 @@ const toggleDay = (dayNum) => {
 
 .block {
   position: absolute;
-  left: 60px;
-  width: calc((100% - 44px) / 7);
-  height: 72px;
-  border-radius: 5px;
-  padding: 4px 6px;
+  left: 75px;
+  width: calc((100% - 55px) / 7);
+  height: 90px;
+  border-radius: 6px;
+  padding: 5px 8px;
   color: #fff;
 }
 
 .block-title {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .block-time {
-  font-size: 8.5px;
+  font-size: 11px;
   opacity: 0.75;
 }
 
 .insight-card {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .insight {
-  padding: 10px 12px;
-  border-left: 2px solid var(--tf-violet);
+  padding: 13px 15px;
+  border-left: 3px solid var(--tf-violet);
   background: rgba(124, 92, 252, 0.08);
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 </style>

@@ -363,7 +363,7 @@ class SessionController extends Controller
 
         $session = TimeSession::create([
             'user_id' => $user->id,
-            'project_id' => $data['project_id'],
+            'project_id' => $data['project_id'] ?? null,
             'category_id' => $data['category_id'] ?? null,
             'started_at' => $startedAt,
             'ended_at' => null,
@@ -407,7 +407,7 @@ class SessionController extends Controller
         $durationSeconds = (int) $endedAt->diffInSeconds($startedAt, true);
         $session = TimeSession::create([
             'user_id' => $user->id,
-            'project_id' => $data['project_id'],
+            'project_id' => $data['project_id'] ?? null,
             'category_id' => $data['category_id'] ?? null,
             'started_at' => $startedAt,
             'ended_at' => $endedAt,
@@ -542,6 +542,46 @@ class SessionController extends Controller
         ]);
     }
 
+    public function index(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $limit = (int) $request->query('per_page', 15);
+        $limit = max(1, min(50, $limit));
+
+        $sessions = TimeSession::query()
+            ->with(['project.category', 'category'])
+            ->where('user_id', $user->id)
+            ->whereNotNull('ended_at')
+            ->orderByDesc('started_at')
+            ->paginate($limit);
+
+        return response()->json([
+            'success' => true,
+            'data' => $sessions->items(),
+            'meta' => [
+                'current_page' => $sessions->currentPage(),
+                'last_page' => $sessions->lastPage(),
+                'total' => $sessions->total(),
+            ],
+        ]);
+    }
+
+    public function destroy(Request $request, int $session): JsonResponse
+    {
+        $user = $request->user();
+        $timeSession = TimeSession::query()
+            ->where('id', $session)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $timeSession->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Session deleted successfully.',
+        ]);
+    }
+
     public function recent(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -628,13 +668,13 @@ class SessionController extends Controller
         }
 
         $label = $session
-            ? ($project->name ?? $category->name ?? 'Session')
+            ? ($project?->name ?? $category?->name ?? 'Session')
             : null;
         $categoryLabel = $session
-            ? ($category->name ?? ($projectCategory?->name ?? 'General'))
+            ? ($category?->name ?? ($projectCategory?->name ?? 'General'))
             : null;
         $color = $session
-            ? ($project->color ?? $category->color)
+            ? ($project?->color ?? $category?->color ?? 'violet')
             : null;
 
         return response()->json([

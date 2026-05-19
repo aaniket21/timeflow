@@ -645,7 +645,7 @@ function heatmapLevel(totalSeconds) {
 .analytics-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
+
   color: var(--tf-text-primary);
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
 }
@@ -654,30 +654,30 @@ function heatmapLevel(totalSeconds) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
-  letter-spacing: -0.3px;
+  letter-spacing: -0px;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .date-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .nav-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 35px;
+  height: 35px;
+  border-radius: 10px;
   border: 1px solid var(--tf-border-default);
   background: var(--tf-bg-card-alt);
   color: var(--tf-text-secondary);
@@ -686,18 +686,18 @@ function heatmapLevel(totalSeconds) {
 
 .tab-bar {
   display: inline-flex;
-  gap: 8px;
-  padding: 4px;
+  gap: 10px;
+  padding: 5px;
   background: var(--tf-bg-card-alt);
-  border-radius: 999px;
-  margin-top: 12px;
+  border-radius: 1249px;
+  margin-top: 15px;
 }
 
 .tab-pill {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
-  padding: 6px 16px;
-  border-radius: 999px;
+  padding: 8px 20px;
+  border-radius: 1249px;
   border: none;
   background: transparent;
   color: var(--tf-text-secondary);
@@ -712,26 +712,26 @@ function heatmapLevel(totalSeconds) {
 .tab-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 12px;
+  gap: 15px;
+  margin-top: 15px;
 }
 
 .daily-focus {
   display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 16px;
+  grid-template-columns: 150px 1fr;
+  gap: 20px;
   align-items: center;
 }
 
 .focus-ring {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   position: relative;
 }
 
 .focus-ring svg {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   transform: rotate(-90deg);
 }
 
@@ -755,7 +755,7 @@ function heatmapLevel(totalSeconds) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 700;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
@@ -763,39 +763,39 @@ function heatmapLevel(totalSeconds) {
 .focus-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 13px;
 }
 
 .stat-label {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-text-hint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .stat-value {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
 .card-title {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .hourly-bars {
   display: grid;
   grid-template-columns: repeat(24, 1fr);
-  gap: 2px;
-  height: 160px;
-  margin-top: 10px;
+  gap: 3px;
+  height: 200px;
+  margin-top: 13px;
 }
 
 .hour-bar {
   background: rgba(80, 60, 20, 0.08);
   position: relative;
-  border-radius: 2px;
+  border-radius: 3px;
   overflow: hidden;
 }
 
@@ -805,15 +805,15 @@ function heatmapLevel(totalSeconds) {
   left: 0;
   right: 0;
   background: var(--tf-violet);
-  border-radius: 2px 2px 0 0;
+  border-radius: 3px 3px 0 0;
 }
 
 .session-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
+  gap: 15px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--tf-border-default);
 }
 
@@ -824,53 +824,53 @@ function heatmapLevel(totalSeconds) {
 .session-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .session-name {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .session-meta {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-text-hint);
 }
 
 .session-time,
 .session-duration {
-  font-size: 11px;
+  font-size: 14px;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
   color: var(--tf-text-secondary);
 }
 
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 13px;
 }
 
 .chart-placeholder {
-  height: 180px;
-  border-radius: 10px;
-  margin-top: 10px;
+  height: 225px;
+  border-radius: 13px;
+  margin-top: 13px;
   background: linear-gradient(180deg, rgba(124, 92, 252, 0.18), rgba(124, 92, 252, 0.04));
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 12px;
+  padding: 15px;
   position: relative;
   overflow: hidden;
 }
 
 .chart-placeholder.tall {
-  height: 200px;
+  height: 250px;
 }
 
 .weekly-chart {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   height: 100%;
   align-items: end;
@@ -883,28 +883,28 @@ function heatmapLevel(totalSeconds) {
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
-  padding-bottom: 12px;
+  gap: 8px;
+  padding-bottom: 15px;
 }
 
 .weekly-fill {
   width: 100%;
-  max-width: 18px;
+  max-width: 23px;
   background: var(--tf-violet);
-  border-radius: 4px 4px 0 0;
+  border-radius: 5px 5px 0 0;
 }
 
 .weekly-goal {
   position: absolute;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 3px;
   background: var(--tf-amber);
   opacity: 0.9;
 }
 
 .weekly-label {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--tf-text-hint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -912,34 +912,34 @@ function heatmapLevel(totalSeconds) {
 
 .legend-row {
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
-  font-size: 10px;
+  gap: 15px;
+  margin-top: 10px;
+  font-size: 13px;
   color: var(--tf-text-secondary);
 }
 
 .legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .legend-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
 .donut-layout {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 10px;
+  gap: 20px;
+  margin-top: 13px;
 }
 
 .donut {
-  width: 120px;
-  height: 120px;
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
   position: relative;
   background: conic-gradient(var(--tf-violet) 0 100%);
@@ -948,7 +948,7 @@ function heatmapLevel(totalSeconds) {
 .donut::after {
   content: '';
   position: absolute;
-  inset: 18px;
+  inset: 23px;
   border-radius: 50%;
   background: var(--tf-bg-card);
 }
@@ -956,28 +956,28 @@ function heatmapLevel(totalSeconds) {
 .legend-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  font-size: 11px;
+  gap: 10px;
+  font-size: 14px;
   color: var(--tf-text-secondary);
 }
 
 .project-row {
   display: grid;
-  grid-template-columns: 10px 1fr 80px 1fr;
+  grid-template-columns: 13px 1fr 100px 1fr;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 13px;
+  padding: 10px 0;
 }
 
 .project-hours {
-  font-size: 11px;
+  font-size: 14px;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
   color: var(--tf-text-secondary);
 }
 
 .project-bar {
-  height: 6px;
-  border-radius: 999px;
+  height: 8px;
+  border-radius: 1249px;
   background: rgba(124, 92, 252, 0.15);
   overflow: hidden;
 }
@@ -992,13 +992,13 @@ function heatmapLevel(totalSeconds) {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 13px;
 }
 
 .calendar-cell {
-  height: 24px;
-  border-radius: 4px;
+  height: 30px;
+  border-radius: 5px;
   background: rgba(80, 60, 20, 0.08);
 }
 
@@ -1019,17 +1019,17 @@ function heatmapLevel(totalSeconds) {
 }
 
 .insight {
-  padding: 10px 12px;
-  border-left: 2px solid var(--tf-violet);
+  padding: 13px 15px;
+  border-left: 3px solid var(--tf-violet);
   background: rgba(124, 92, 252, 0.08);
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .monthly-chart {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(4px, 1fr));
-  gap: 2px;
+  grid-template-columns: repeat(auto-fit, minmax(5px, 1fr));
+  gap: 3px;
   width: 100%;
   height: 100%;
   align-items: end;
@@ -1043,24 +1043,24 @@ function heatmapLevel(totalSeconds) {
 .monthly-fill {
   width: 100%;
   background: rgba(124, 92, 252, 0.65);
-  border-radius: 2px 2px 0 0;
+  border-radius: 3px 3px 0 0;
 }
 
 .empty-state {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--tf-text-hint);
-  padding: 10px 0;
+  padding: 13px 0;
 }
 
 .color-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
 .dot-violet { background: var(--tf-violet); }
 
-@media (max-width: 900px) {
+@media (max-width: 1125px) {
   .daily-focus {
     grid-template-columns: 1fr;
     justify-items: center;

@@ -211,7 +211,7 @@ const deleteExam = async (id) => {
 .goals-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
+
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   color: var(--tf-text-primary);
 }
@@ -220,34 +220,34 @@ const deleteExam = async (id) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .primary-btn {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 10px;
+  height: 50px;
+  padding: 0 20px;
+  border-radius: 13px;
   border: none;
   background: var(--tf-violet);
   color: #fff;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .section-title {
-  margin-top: 14px;
-  font-size: 10px;
+  margin-top: 18px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--tf-text-hint);
@@ -257,15 +257,15 @@ const deleteExam = async (id) => {
 .exam-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 13px;
+  margin-top: 13px;
 }
 
 .goal-card {
   display: grid;
-  grid-template-columns: 32px 1fr 60px;
+  grid-template-columns: 40px 1fr 75px;
   align-items: center;
-  gap: 12px;
+  gap: 15px;
 }
 
 .goal-card.hit {
@@ -273,9 +273,9 @@ const deleteExam = async (id) => {
 }
 
 .goal-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: rgba(124, 92, 252, 0.12);
   display: flex;
   align-items: center;
@@ -284,20 +284,20 @@ const deleteExam = async (id) => {
 }
 
 .goal-title {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .goal-target {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--tf-text-secondary);
 }
 
 .goal-bar {
-  height: 4px;
-  border-radius: 999px;
+  height: 5px;
+  border-radius: 1249px;
   background: rgba(80, 60, 20, 0.08);
-  margin-top: 6px;
+  margin-top: 8px;
   overflow: hidden;
 }
 
@@ -308,70 +308,70 @@ const deleteExam = async (id) => {
 }
 
 .goal-ring {
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  border: 2px solid rgba(124, 92, 252, 0.2);
+  border: 3px solid rgba(124, 92, 252, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .goal-percent {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
 .exam-card {
   display: grid;
-  grid-template-columns: 4px 1fr auto;
-  gap: 12px;
+  grid-template-columns: 5px 1fr auto;
+  gap: 15px;
   align-items: center;
 }
 
 .exam-accent {
-  width: 4px;
-  border-radius: 2px;
+  width: 5px;
+  border-radius: 3px;
   height: 100%;
 }
 
 .exam-title {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
 }
 
 .exam-date {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .exam-days {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .exam-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .outline-btn {
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 10px;
+  height: 45px;
+  padding: 0 15px;
+  border-radius: 13px;
   border: 1px solid var(--tf-border-default);
   background: transparent;
   color: var(--tf-text-secondary);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .empty-state {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-hint);
-  padding: 12px 4px;
+  padding: 15px 5px;
 }
 </style>

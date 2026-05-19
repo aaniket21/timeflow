@@ -14,7 +14,7 @@ class UpdateSessionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'project_id' => ['sometimes', 'integer', 'exists:projects,id'],
+            'project_id' => ['sometimes', 'nullable', 'integer', 'exists:projects,id'],
             'category_id' => ['sometimes', 'nullable', 'integer', 'exists:categories,id'],
             'started_at' => ['sometimes', 'date'],
             'ended_at' => ['sometimes', 'date'],

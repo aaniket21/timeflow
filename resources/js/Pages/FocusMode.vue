@@ -340,10 +340,10 @@ onUnmounted(() => {
 <style scoped>
 .focus-shell {
   min-height: 100vh;
-  padding: 28px 24px 40px;
+  padding: 35px 30px 50px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 40px;
   font-family: 'Plus Jakarta Sans', sans-serif;
   color: #f8fafc;
   background: radial-gradient(circle at 20% 10%, rgba(124, 92, 252, 0.2), transparent 45%),
@@ -361,54 +361,54 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 20px;
   flex-wrap: wrap;
 }
 
 .status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 10px;
+  font-size: 15px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: rgba(248, 250, 252, 0.6);
 }
 
 .signal {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
+  width: 10px;
+  height: 10px;
+  border-radius: 1249px;
   background: #0ecfa4;
-  box-shadow: 0 0 8px rgba(14, 207, 164, 0.8);
+  box-shadow: 0 0 10px rgba(14, 207, 164, 0.8);
 }
 
 .signal.offline {
   background: #ef4444;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
 }
 
 .headline {
   text-align: center;
-  min-width: 200px;
+  min-width: 250px;
 }
 
 .tag {
-  font-size: 12px;
+  font-size: 15px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: rgba(248, 250, 252, 0.6);
 }
 
 .subtitle {
-  margin-top: 8px;
-  font-size: 18px;
+  margin-top: 10px;
+  font-size: 23px;
   font-weight: 700;
 }
 
 .controls {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -416,12 +416,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 30px;
 }
 
 .orb {
-  width: min(420px, 90vw);
-  height: min(420px, 90vw);
+  width: min(525px, 90vw);
+  height: min(525px, 90vw);
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.12), transparent 60%),
     radial-gradient(circle at 70% 80%, rgba(124, 92, 252, 0.2), transparent 55%),
@@ -430,7 +430,7 @@ onUnmounted(() => {
   display: grid;
   place-items: center;
   position: relative;
-  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.55);
+  box-shadow: 0 38px 88px rgba(15, 23, 42, 0.55);
 }
 
 .focus-shell[data-mode="break"] .orb {
@@ -440,7 +440,7 @@ onUnmounted(() => {
 .orb::after {
   content: '';
   position: absolute;
-  inset: 18px;
+  inset: 23px;
   border-radius: 50%;
   border: 1px dashed rgba(248, 250, 252, 0.2);
   animation: spin 16s linear infinite;
@@ -450,19 +450,19 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 13px;
   text-align: center;
   z-index: 1;
 }
 
 .timer {
   font-family: 'JetBrains Mono', monospace;
-  font-size: clamp(48px, 7vw, 96px);
+  font-size: clamp(60px, 7vw, 120px);
   letter-spacing: 0.1em;
 }
 
 .state {
-  font-size: 14px;
+  font-size: 18px;
   text-transform: uppercase;
   letter-spacing: 0.3em;
   color: rgba(248, 250, 252, 0.6);
@@ -470,7 +470,7 @@ onUnmounted(() => {
 
 .action-row {
   display: flex;
-  gap: 12px;
+  gap: 15px;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -478,10 +478,10 @@ onUnmounted(() => {
 .primary,
 .ghost {
   border: none;
-  padding: 10px 18px;
-  border-radius: 999px;
+  padding: 13px 23px;
+  border-radius: 1249px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 18px;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
@@ -489,7 +489,7 @@ onUnmounted(() => {
 .primary {
   background: linear-gradient(90deg, #7c5cfc, #0ecfa4);
   color: #071014;
-  box-shadow: 0 12px 30px rgba(14, 207, 164, 0.3);
+  box-shadow: 0 15px 38px rgba(14, 207, 164, 0.3);
 }
 
 .primary:hover {
@@ -509,10 +509,10 @@ onUnmounted(() => {
 
 .hint-row {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   flex-wrap: wrap;
   justify-content: center;
-  font-size: 12px;
+  font-size: 15px;
   color: rgba(248, 250, 252, 0.5);
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -524,28 +524,28 @@ onUnmounted(() => {
   background: rgba(4, 4, 10, 0.82);
   display: grid;
   place-items: center;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
 }
 
 .overlay-card {
-  padding: 24px 28px;
-  border-radius: 18px;
+  padding: 30px 35px;
+  border-radius: 23px;
   background: rgba(12, 10, 20, 0.9);
   border: 1px solid rgba(245, 166, 35, 0.4);
   text-align: center;
-  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 28px 63px rgba(0, 0, 0, 0.6);
 }
 
 .overlay-title {
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .overlay-body {
-  font-size: 14px;
+  font-size: 18px;
   color: rgba(248, 250, 252, 0.7);
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 @keyframes spin {

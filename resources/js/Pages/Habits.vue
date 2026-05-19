@@ -187,7 +187,7 @@ const createHabit = async () => {
 .habits-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
+
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   color: var(--tf-text-primary);
 }
@@ -196,75 +196,75 @@ const createHabit = async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 13px;
+  margin-top: 15px;
 }
 
 .stat-label {
-  font-size: 10px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--tf-text-hint);
 }
 
 .stat-value {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
 .habit-grid {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .grid-header,
 .habit-row {
   display: grid;
-  grid-template-columns: 120px repeat(7, 1fr);
+  grid-template-columns: 150px repeat(7, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .grid-header {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-text-hint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .habit-name {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .habit-dot {
-  width: 10px;
-  height: 10px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
 }
 
 .habit-streak {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-amber);
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
@@ -276,39 +276,39 @@ const createHabit = async () => {
 }
 
 .check-box {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   border: 1px solid;
 }
 
 .outline-btn {
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 10px;
+  height: 45px;
+  padding: 0 15px;
+  border-radius: 13px;
   border: 1px solid var(--tf-border-default);
   background: transparent;
   color: var(--tf-text-secondary);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .insight-card {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .insight {
-  padding: 10px 12px;
-  border-left: 2px solid var(--tf-violet);
+  padding: 13px 15px;
+  border-left: 3px solid var(--tf-violet);
   background: rgba(124, 92, 252, 0.08);
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .empty-state {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-hint);
-  padding: 12px 0 6px;
+  padding: 15px 0 8px;
 }
 </style>

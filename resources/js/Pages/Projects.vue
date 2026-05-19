@@ -169,7 +169,7 @@ const formatLastSession = (isoString) => {
 .projects-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
+
   color: var(--tf-text-primary);
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
 }
@@ -178,27 +178,27 @@ const formatLastSession = (isoString) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .primary-btn {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 10px;
+  height: 50px;
+  padding: 0 20px;
+  border-radius: 13px;
   border: none;
   background: var(--tf-violet);
   color: #fff;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -206,21 +206,21 @@ const formatLastSession = (isoString) => {
 .toggle-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 10px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
-  margin: 12px 0;
+  margin: 15px 0;
 }
 
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(325px, 1fr));
+  gap: 15px;
 }
 
 .project-card {
   display: flex;
-  gap: 12px;
+  gap: 15px;
   position: relative;
 }
 
@@ -229,49 +229,49 @@ const formatLastSession = (isoString) => {
 }
 
 .accent {
-  width: 3px;
-  border-radius: 2px;
+  width: 4px;
+  border-radius: 3px;
 }
 
 .project-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   flex: 1;
 }
 
 .project-name {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
 }
 
 .project-client {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--tf-text-secondary);
 }
 
 .project-chip {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   align-self: flex-start;
-  padding: 2px 8px;
-  border-radius: 999px;
+  padding: 3px 10px;
+  border-radius: 1249px;
   background: var(--tf-bg-card-alt);
   color: var(--tf-text-secondary);
 }
 
 .project-stats {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--tf-text-secondary);
   display: flex;
-  gap: 10px;
+  gap: 13px;
 }
 
 .budget-bar {
-  height: 4px;
-  border-radius: 999px;
+  height: 5px;
+  border-radius: 1249px;
   background: rgba(80, 60, 20, 0.08);
   overflow: hidden;
 }
@@ -282,13 +282,13 @@ const formatLastSession = (isoString) => {
 }
 
 .project-footer {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-text-hint);
 }
 
 .project-actions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 </style>

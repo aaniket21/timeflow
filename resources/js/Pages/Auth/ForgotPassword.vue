@@ -64,35 +64,35 @@ const submitReset = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 25px;
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
 }
 
 .auth-card {
-  width: 420px;
+  width: 525px;
   max-width: 100%;
   background: var(--tf-bg-card);
   border: 1px solid var(--tf-border-default);
-  border-radius: 14px;
-  padding: 28px;
+  border-radius: 18px;
+  padding: 35px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 15px;
 }
 
 .auth-logo {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 18px;
+  gap: 10px;
+  font-size: 23px;
   font-weight: 800;
 }
 
 .logo-orb {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: var(--tf-violet);
   display: inline-flex;
   align-items: center;
@@ -101,7 +101,7 @@ const submitReset = async () => {
 }
 
 .auth-title {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
   text-align: center;
 }
@@ -109,31 +109,31 @@ const submitReset = async () => {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .field input {
-  height: 40px;
-  border-radius: 8px;
+  height: 50px;
+  border-radius: 10px;
   border: 1px solid var(--tf-border-default);
-  padding: 0 10px;
+  padding: 0 13px;
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 15px;
 }
 
 .primary-btn {
-  height: 44px;
-  border-radius: 12px;
+  height: 55px;
+  border-radius: 15px;
   border: none;
   background: var(--tf-violet);
   color: #fff;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -144,25 +144,25 @@ const submitReset = async () => {
 }
 
 .auth-status {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-mint);
   background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.3);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 10px;
+  padding: 10px 13px;
 }
 
 .auth-error {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-red);
   background: rgba(248, 113, 113, 0.12);
   border: 1px solid rgba(248, 113, 113, 0.3);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 10px;
+  padding: 10px 13px;
 }
 
 .auth-foot {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
   text-align: center;
 }

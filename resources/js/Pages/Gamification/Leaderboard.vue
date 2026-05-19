@@ -47,7 +47,7 @@ const props = defineProps({
 <style scoped>
 .leader-shell {
   min-height: 100vh;
-  padding: 32px 26px 60px;
+  padding: 40px 33px 75px;
   background: radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.12), transparent 50%),
     radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.12), transparent 55%),
     #0f172a;
@@ -60,21 +60,21 @@ const props = defineProps({
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 20px;
+  margin-bottom: 30px;
 }
 
 .overline {
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  font-size: 11px;
+  font-size: 14px;
   color: rgba(226, 232, 240, 0.6);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .leader-head h1 {
-  font-size: 30px;
-  margin: 0 0 6px;
+  font-size: 38px;
+  margin: 0 0 8px;
 }
 
 .leader-head p {
@@ -83,18 +83,18 @@ const props = defineProps({
 }
 
 .leader-tag {
-  padding: 8px 16px;
-  border-radius: 999px;
+  padding: 10px 20px;
+  border-radius: 1249px;
   background: rgba(15, 23, 42, 0.8);
   border: 1px solid rgba(148, 163, 184, 0.3);
-  font-size: 12px;
+  font-size: 15px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .leader-table {
   background: rgba(15, 23, 42, 0.7);
-  border-radius: 16px;
+  border-radius: 20px;
   border: 1px solid rgba(148, 163, 184, 0.2);
   overflow: hidden;
 }
@@ -102,14 +102,14 @@ const props = defineProps({
 .leader-row {
   display: grid;
   grid-template-columns: 0.6fr 2fr 1fr;
-  gap: 16px;
-  padding: 14px 18px;
+  gap: 20px;
+  padding: 18px 23px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .leader-row.head {
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.18em;
   background: rgba(15, 23, 42, 0.85);
   color: rgba(226, 232, 240, 0.6);
@@ -130,21 +130,21 @@ const props = defineProps({
 }
 
 .callout {
-  margin-top: 24px;
-  padding: 18px 20px;
-  border-radius: 16px;
+  margin-top: 30px;
+  padding: 23px 25px;
+  border-radius: 20px;
   background: linear-gradient(90deg, rgba(14, 116, 144, 0.4), rgba(15, 23, 42, 0.6));
   border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
 .callout-title {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
 }
 
 .callout-desc {
-  margin-top: 6px;
-  font-size: 13px;
+  margin-top: 8px;
+  font-size: 16px;
   color: rgba(226, 232, 240, 0.7);
 }
 </style>

@@ -98,7 +98,7 @@ onMounted(() => {
 .leaderboard-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
+
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   color: var(--tf-text-primary);
 }
@@ -107,46 +107,46 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .lock-card {
-  margin-top: 12px;
+  margin-top: 15px;
   text-align: center;
-  padding: 24px;
+  padding: 30px;
 }
 
 .lock-icon {
-  font-size: 32px;
+  font-size: 40px;
   color: var(--tf-text-hint);
 }
 
 .lock-text {
-  margin-top: 8px;
-  font-size: 12px;
+  margin-top: 10px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .board-card {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .board-row {
   display: grid;
-  grid-template-columns: 60px 1fr auto;
+  grid-template-columns: 75px 1fr auto;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
+  gap: 15px;
+  padding: 13px 0;
   border-bottom: 1px solid var(--tf-border-default);
 }
 
@@ -155,26 +155,26 @@ onMounted(() => {
 }
 
 .rank {
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 700;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
   color: var(--tf-text-hint);
 }
 
 .alias {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
 }
 
 .xp {
-  font-size: 12px;
+  font-size: 15px;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
   color: var(--tf-violet);
 }
 
 .board-footer {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--tf-text-hint);
-  margin-top: 8px;
+  margin-top: 10px;
 }
 </style>

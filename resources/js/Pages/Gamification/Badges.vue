@@ -46,7 +46,7 @@ const props = defineProps({
 <style scoped>
 .badge-shell {
   min-height: 100vh;
-  padding: 32px 26px 60px;
+  padding: 40px 33px 75px;
   background: linear-gradient(140deg, rgba(14, 116, 144, 0.08), transparent 45%),
     linear-gradient(45deg, rgba(251, 191, 36, 0.08), transparent 60%),
     #f8fafc;
@@ -59,21 +59,21 @@ const props = defineProps({
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 18px;
-  margin-bottom: 24px;
+  gap: 23px;
+  margin-bottom: 30px;
 }
 
 .overline {
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  font-size: 11px;
+  font-size: 14px;
   color: #64748b;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .badge-head h1 {
-  font-size: 30px;
-  margin: 0 0 6px;
+  font-size: 38px;
+  margin: 0 0 8px;
 }
 
 .badge-head p {
@@ -82,30 +82,30 @@ const props = defineProps({
 }
 
 .badge-counter {
-  padding: 10px 18px;
-  border-radius: 999px;
+  padding: 13px 23px;
+  border-radius: 1249px;
   background: #0f172a;
   color: #e2e8f0;
-  font-size: 12px;
+  font-size: 15px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .badge-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(213px, 1fr));
+  gap: 20px;
 }
 
 .badge-card {
   background: #ffffff;
-  border-radius: 16px;
-  padding: 16px 14px;
+  border-radius: 20px;
+  padding: 20px 18px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .badge-card.locked {
@@ -115,24 +115,24 @@ const props = defineProps({
 }
 
 .badge-icon {
-  font-size: 26px;
+  font-size: 33px;
 }
 
 .badge-name {
   font-weight: 700;
-  font-size: 16px;
+  font-size: 20px;
 }
 
 .badge-desc {
-  font-size: 13px;
+  font-size: 16px;
   color: inherit;
 }
 
 .badge-chip {
   align-self: flex-start;
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  font-size: 14px;
+  padding: 5px 13px;
+  border-radius: 1249px;
   background: rgba(14, 116, 144, 0.12);
   color: #0e7490;
   text-transform: uppercase;

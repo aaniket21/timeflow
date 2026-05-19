@@ -171,7 +171,7 @@ onMounted(() => {
 .achievements-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
+
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   color: var(--tf-text-primary);
 }
@@ -180,53 +180,53 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 13px;
+  margin-top: 15px;
 }
 
 .stat-label {
-  font-size: 10px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--tf-text-hint);
 }
 
 .stat-value {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
 .level-card {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .level-title {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
 }
 
 .level-bar {
-  height: 4px;
+  height: 5px;
   background: rgba(124, 92, 252, 0.15);
-  border-radius: 999px;
-  margin-top: 8px;
+  border-radius: 1249px;
+  margin-top: 10px;
   overflow: hidden;
 }
 
@@ -238,26 +238,26 @@ onMounted(() => {
 }
 
 .level-meta {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--tf-text-secondary);
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .badge-group {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .badge-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-  margin-top: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 13px;
+  margin-top: 10px;
 }
 
 .badge-card {
   text-align: center;
-  padding: 12px;
-  border-radius: 10px;
+  padding: 15px;
+  border-radius: 13px;
   border: 1px solid var(--tf-border-default);
   background: var(--tf-bg-card);
 }
@@ -267,41 +267,41 @@ onMounted(() => {
 }
 
 .badge-icon {
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 700;
 }
 
 .badge-name {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
-  margin-top: 4px;
+  margin-top: 5px;
 }
 
 .badge-category {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--tf-text-hint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .xp-history {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 
 .xp-header {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .xp-row {
   display: grid;
   grid-template-columns: 1fr auto auto;
-  gap: 10px;
-  font-size: 11px;
+  gap: 13px;
+  font-size: 14px;
   color: var(--tf-text-secondary);
-  padding: 6px 0;
+  padding: 8px 0;
 }
 
 .xp-amount {

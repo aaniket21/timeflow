@@ -157,7 +157,7 @@ onMounted(() => {
 .reports-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
+
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   color: var(--tf-text-primary);
 }
@@ -166,27 +166,27 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .primary-btn {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 10px;
+  height: 50px;
+  padding: 0 20px;
+  border-radius: 13px;
   border: none;
   background: var(--tf-violet);
   color: #fff;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -194,50 +194,50 @@ onMounted(() => {
 .report-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 13px;
+  margin-top: 15px;
 }
 
 .report-card {
   display: grid;
   grid-template-columns: 1fr auto auto;
-  gap: 12px;
+  gap: 15px;
   align-items: center;
 }
 
 .report-title {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
 }
 
 .report-range {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--tf-text-secondary);
 }
 
 .report-status {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .report-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .outline-btn {
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 8px;
+  height: 40px;
+  padding: 0 13px;
+  border-radius: 10px;
   border: 1px solid var(--tf-border-default);
   background: transparent;
   color: var(--tf-text-secondary);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
 }
 </style>
