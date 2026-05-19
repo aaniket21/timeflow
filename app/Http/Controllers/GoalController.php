@@ -247,6 +247,47 @@ class GoalController extends Controller
             ],
         ], 201);
     }
+    public function update(Request $request, int $goal): JsonResponse
+    {
+        $user = $request->user();
+        $existing = Goal::query()
+            ->where('id', $goal)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'title' => ['sometimes', 'string', 'max:100'],
+            'target_value' => ['sometimes', 'numeric', 'min:0'],
+            'active' => ['sometimes', 'boolean'],
+        ]);
+
+        $existing->update($data);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'goal' => $existing,
+            ],
+        ]);
+    }
+
+    public function destroy(Request $request, int $goal): JsonResponse
+    {
+        $user = $request->user();
+        $existing = Goal::query()
+            ->where('id', $goal)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $existing->forceFill(['active' => false])->save();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'goal' => $existing,
+            ],
+        ]);
+    }
 
     public function logHabit(Request $request, int $goal): JsonResponse
     {
@@ -270,11 +311,19 @@ class GoalController extends Controller
 
         $date = Carbon::parse($data['date'] ?? now())->toDateString();
 
-        $log = HabitLog::query()->firstOrNew([
-            'user_id' => $user->id,
-            'goal_id' => $habit->id,
-            'date' => $date,
-        ]);
+        $log = HabitLog::query()
+            ->where('user_id', $user->id)
+            ->where('goal_id', $habit->id)
+            ->whereDate('date', $date)
+            ->first();
+
+        if (!$log) {
+            $log = new HabitLog([
+                'user_id' => $user->id,
+                'goal_id' => $habit->id,
+                'date' => $date,
+            ]);
+        }
 
         $previousDone = (bool) ($log->exists ? $log->done : false);
         $done = array_key_exists('done', $data) ? (bool) $data['done'] : ! $previousDone;
@@ -287,7 +336,7 @@ class GoalController extends Controller
                 $log = HabitLog::query()
                     ->where('user_id', $user->id)
                     ->where('goal_id', $habit->id)
-                    ->where('date', $date)
+                    ->whereDate('date', $date)
                     ->firstOrFail();
                     
                 $previousDone = (bool) $log->done;

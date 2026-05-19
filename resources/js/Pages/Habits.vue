@@ -132,6 +132,22 @@ function formatDateInput(date) {
   return `${year}-${month}-${day}`;
 }
 
+const editHabit = (habit) => {
+  habitForm.value = { id: habit.id, title: habit.name, frequency: 'daily' };
+  showHabitModal.value = true;
+};
+
+const deleteHabit = async (habit) => {
+  if (!confirm(`Delete habit "${habit.name}"?`)) return;
+  try {
+    await axios.delete(`/api/goals/${habit.id}`);
+    loadHabits();
+    if (window.TimeflowToast) window.TimeflowToast.success('Habit deleted');
+  } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to delete habit');
+  }
+};
+
 const createHabit = async () => {
   try {
     const payload = {
@@ -139,11 +155,17 @@ const createHabit = async () => {
       type: 'habit',
       target_value: habitForm.value.frequency === 'daily' ? 7 : (habitForm.value.frequency === 'weekdays' ? 5 : 3),
     };
-    await axios.post('/api/goals', payload);
+    
+    if (habitForm.value.id) {
+      await axios.put(`/api/goals/${habitForm.value.id}`, payload);
+    } else {
+      await axios.post('/api/goals', payload);
+    }
+    
     showHabitModal.value = false;
     habitForm.value = { title: '', frequency: 'daily' };
     loadHabits();
-    if (window.TimeflowToast) window.TimeflowToast.success('Habit created');
+    if (window.TimeflowToast) window.TimeflowToast.success(habitForm.value.id ? 'Habit updated' : 'Habit created');
   } catch (error) {
     if (window.TimeflowToast) window.TimeflowToast.error('Failed to create habit');
   }
@@ -158,7 +180,7 @@ const createHabit = async () => {
           <div class="page-title">Habit Tracker</div>
           <div class="page-subtitle">Keep streaks consistent all week.</div>
         </div>
-        <button class="outline-btn" type="button" @click="showHabitModal = true">+ Add habit</button>
+        <button class="outline-btn" type="button" @click="() => { habitForm = { title: '', frequency: 'daily' }; showHabitModal = true; }">+ Add habit</button>
       </div>
 
       <div class="stats-row">
@@ -180,8 +202,9 @@ const createHabit = async () => {
         <div class="grid-header">
           <div>Habit</div>
           <div v-for="day in days" :key="day" class="day-cell">{{ day }}</div>
+          <div></div>
         </div>
-        <div v-if="habits.length">
+        <div v-if="habits.length" class="habit-list">
           <div v-for="habit in habits" :key="habit.id" class="habit-row">
             <div class="habit-name">
               <span class="habit-dot" :style="{ background: habit.color }"></span>
@@ -190,6 +213,10 @@ const createHabit = async () => {
             </div>
             <div v-for="(check, index) in habit.checks" :key="index" class="check-cell" @click="toggleCheck(habit, index)">
               <span class="check-box" :style="{ background: check ? habit.color : 'transparent', borderColor: habit.color, cursor: 'pointer' }"></span>
+            </div>
+            <div class="habit-actions">
+              <button class="action-btn edit-btn" @click="editHabit(habit)">Edit</button>
+              <button class="action-btn del-btn" @click="deleteHabit(habit)">Del</button>
             </div>
           </div>
         </div>
@@ -201,7 +228,7 @@ const createHabit = async () => {
         <div class="insight">Check back after 7 days for habit insights.</div>
       </div>
 
-      <ModalBase :open="showHabitModal" title="Add Habit" @close="showHabitModal = false">
+      <ModalBase :open="showHabitModal" :title="habitForm.id ? 'Edit Habit' : 'Add Habit'" @close="showHabitModal = false">
         <div class="field">
           <label class="field-label">Habit name</label>
           <input class="text-input" type="text" v-model="habitForm.title" placeholder="e.g. Read 30 min" />
@@ -216,7 +243,7 @@ const createHabit = async () => {
         </div>
         <template #footer>
           <button class="outline-btn" type="button" @click="showHabitModal = false">Cancel</button>
-          <button class="primary-btn" type="button" @click="createHabit">Add</button>
+          <button class="primary-btn" type="button" @click="createHabit">{{ habitForm.id ? 'Save' : 'Add' }}</button>
         </template>
       </ModalBase>
     </AppShell>
@@ -273,10 +300,15 @@ const createHabit = async () => {
   margin-top: 15px;
 }
 
+.habit-list {
+  display: flex;
+  flex-direction: column;
+}
+
 .grid-header,
 .habit-row {
   display: grid;
-  grid-template-columns: 150px repeat(7, 1fr);
+  grid-template-columns: 200px repeat(7, 1fr) 80px;
   align-items: center;
   gap: 8px;
 }
@@ -286,7 +318,17 @@ const createHabit = async () => {
   color: var(--tf-text-hint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-bottom: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--tf-border-default);
+}
+
+.habit-row {
+  padding: 15px 0;
+  border-bottom: 1px solid var(--tf-border-default);
+}
+
+.habit-row:last-child {
+  border-bottom: none;
 }
 
 .habit-name {
@@ -320,6 +362,39 @@ const createHabit = async () => {
   height: 28px;
   border-radius: 8px;
   border: 1px solid;
+}
+
+.habit-actions {
+  display: flex;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.edit-btn { 
+  color: var(--tf-text-secondary); 
+}
+.edit-btn:hover { 
+  background: var(--tf-border-default); 
+  color: var(--tf-text-primary); 
+}
+
+.del-btn { 
+  color: var(--tf-red); 
+  opacity: 0.8; 
+}
+.del-btn:hover { 
+  opacity: 1; 
+  background: rgba(239, 68, 68, 0.1); 
 }
 
 .outline-btn {

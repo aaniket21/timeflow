@@ -40,6 +40,8 @@ Route::middleware(['auth:sanctum', EnsureTimezoneIsSet::class])->group(function 
     Route::get('/goals', [GoalController::class, 'index']);
     Route::get('/goals/summary', [GoalController::class, 'summary']);
     Route::post('/goals', [GoalController::class, 'store']);
+    Route::put('/goals/{goal}', [GoalController::class, 'update']);
+    Route::delete('/goals/{goal}', [GoalController::class, 'destroy']);
     Route::get('/habits/week', [GoalController::class, 'weekHabits']);
     Route::get('/habits/today', [GoalController::class, 'todayHabits']);
     Route::post('/habits/{goal}/log', [GoalController::class, 'logHabit']);
