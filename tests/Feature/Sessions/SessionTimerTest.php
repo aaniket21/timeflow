@@ -37,6 +37,24 @@ class SessionTimerTest extends TestCase
         ]);
     }
 
+    public function test_api_requests_use_user_timezone(): void
+    {
+        $user = User::factory()->create(['timezone' => 'Asia/Kolkata']);
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/sessions/start', [
+            'type' => 'timer',
+        ]);
+
+        $response->assertCreated();
+        
+        $session = TimeSession::where('user_id', $user->id)->first();
+        
+        // Ensure the timestamp was saved and serialized in Asia/Kolkata
+        $this->assertEquals('Asia/Kolkata', config('app.timezone'));
+        $this->assertStringContainsString('+05:30', $response->json('data.session.started_at'));
+    }
+
     public function test_stop_session_sets_end_and_duration(): void
     {
         $user = User::factory()->create();
