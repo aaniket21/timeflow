@@ -62,21 +62,47 @@ onMounted(() => {
 });
 
 const toggleCheck = async (habit, dayIndex) => {
-  const newValue = !habit.checks[dayIndex];
-  habit.checks[dayIndex] = newValue;
-
   const cursor = new Date(startDate.value);
   cursor.setDate(cursor.getDate() + dayIndex);
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  if (cursor > now && !habit.checks[dayIndex]) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Cannot log habits for future days');
+    return;
+  }
+
+  const newValue = !habit.checks[dayIndex];
+  // Vue 3 proxy will react to this array index mutation
+  habit.checks[dayIndex] = newValue;
+  
+  if (newValue) {
+    stats.value.checks_total = (stats.value.checks_total || 0) + 1;
+  } else {
+    stats.value.checks_total = Math.max(0, (stats.value.checks_total || 0) - 1);
+  }
+
   const dateStr = formatDateInput(cursor);
 
   try {
-    await axios.post(`/api/habits/${habit.id}/log`, {
+    const res = await axios.post(`/api/habits/${habit.id}/log`, {
       date: dateStr,
       done: newValue,
     });
-    loadHabits();
+    
+    // Update streak from backend response
+    if (res.data?.data?.streak_current !== undefined) {
+      habit.streak = res.data.data.streak_current;
+      stats.value.longest_streak = Math.max(stats.value.longest_streak || 0, habit.streak);
+    }
   } catch (error) {
+    // Revert optimistic updates on failure
     habit.checks[dayIndex] = !newValue;
+    if (newValue) stats.value.checks_total--;
+    else stats.value.checks_total++;
+    
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to log habit');
     console.warn('Habit toggle failed', error);
   }
 };
