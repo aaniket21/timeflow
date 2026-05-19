@@ -1,6 +1,6 @@
 <script setup>
 import axios from 'axios';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 import ModalBase from '../Components/ModalBase.vue';
 
@@ -11,7 +11,10 @@ const props = defineProps({
   },
 });
 
-const showArchived = ref(false);
+const showArchived = ref(localStorage.getItem('tf_show_archived') === 'true');
+watch(showArchived, (newVal) => {
+  localStorage.setItem('tf_show_archived', newVal);
+});
 const projects = ref([]);
 const showCreateModal = ref(false);
 const createForm = ref({ name: '', category: '', color: '#7C5CFC', budget_hours: '' });
@@ -45,6 +48,33 @@ const createProject = async () => {
   } catch (error) {
     if (window.TimeflowToast) window.TimeflowToast.error('Failed to create project');
     console.warn('Create project failed', error);
+  }
+};
+
+const showEditModal = ref(false);
+const editForm = ref({ id: null, name: '', category: '', color: '#7C5CFC', budget_hours: '', archived: false });
+
+const openEditModal = (project) => {
+  editForm.value = {
+    id: project.id,
+    name: project.name,
+    category: project.category || '',
+    color: project.color || '#7C5CFC',
+    budget_hours: project.budget_hours || '',
+    archived: project.archived || false
+  };
+  showEditModal.value = true;
+};
+
+const updateProject = async () => {
+  try {
+    await axios.put(`/api/projects/${editForm.value.id}`, editForm.value);
+    showEditModal.value = false;
+    loadProjects();
+    if (window.TimeflowToast) window.TimeflowToast.success('Project updated');
+  } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to update project');
+    console.warn('Update project failed', error);
   }
 };
 
@@ -172,8 +202,12 @@ const getProgress = (project) => {
             <div class="project-footer">{{ project.lastSessionLabel }}</div>
           </div>
           <div class="project-actions">
-            <button class="tf-icon-button" type="button" aria-label="Edit project"><i class="ti ti-edit" aria-hidden="true"></i></button>
-            <button class="tf-icon-button" type="button" aria-label="Archive project" @click="archiveProject(project.id)"><i class="ti ti-archive" aria-hidden="true"></i></button>
+            <button class="tf-icon-button action-btn" type="button" aria-label="Edit project" @click="openEditModal(project)">
+              <i class="ti ti-edit" aria-hidden="true"></i>
+            </button>
+            <button class="tf-icon-button action-btn" type="button" aria-label="Delete project" @click="deleteProject(project.id)">
+              <i class="ti ti-trash" aria-hidden="true"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -198,6 +232,33 @@ const getProgress = (project) => {
         <template #footer>
           <button class="outline-btn" type="button" @click="showCreateModal = false">Cancel</button>
           <button class="primary-btn" type="button" @click="createProject">Create</button>
+        </template>
+      </ModalBase>
+
+      <ModalBase :open="showEditModal" title="Edit Project" @close="showEditModal = false">
+        <div class="field">
+          <label class="field-label">Project name</label>
+          <input class="text-input" type="text" v-model="editForm.name" placeholder="e.g. Math Revision" />
+        </div>
+        <div class="field">
+          <label class="field-label">Category</label>
+          <input class="text-input" type="text" v-model="editForm.category" placeholder="e.g. Study" />
+        </div>
+        <div class="field">
+          <label class="field-label">Budget (hours)</label>
+          <input class="text-input" type="number" v-model="editForm.budget_hours" placeholder="e.g. 40" />
+        </div>
+        <div class="field">
+          <label class="field-label">Color</label>
+          <input class="text-input" type="color" v-model="editForm.color" />
+        </div>
+        <div class="field" style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
+          <input type="checkbox" id="edit-archived" v-model="editForm.archived" />
+          <label for="edit-archived" style="font-size: 14px; font-weight: 600; cursor: pointer;">Archive Project</label>
+        </div>
+        <template #footer>
+          <button class="outline-btn" type="button" @click="showEditModal = false">Cancel</button>
+          <button class="primary-btn" type="button" @click="updateProject">Save</button>
         </template>
       </ModalBase>
     </AppShell>
@@ -329,5 +390,10 @@ const getProgress = (project) => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.action-btn {
+  font-size: 20px; /* Increase size by a few pixels from the default */
+  padding: 8px;
 }
 </style>

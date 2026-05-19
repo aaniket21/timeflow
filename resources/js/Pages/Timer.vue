@@ -48,8 +48,10 @@ const activeProject = computed(() =>
 );
 
 const projectGroups = computed(() => {
+  const showArchived = localStorage.getItem('tf_show_archived') === 'true';
   const grouped = {};
   projects.value.forEach((p) => {
+    if (p.archived && !showArchived) return;
     const cat = p.category || 'Other';
     if (!grouped[cat]) grouped[cat] = [];
     grouped[cat].push(p);
@@ -89,6 +91,7 @@ const loadProjects = async () => {
         name: p.name,
         category: p.category || 'Other',
         color: p.color || 'violet',
+        archived: p.archived,
       }));
     }
   } catch (e) {
@@ -147,7 +150,7 @@ const startSession = async () => {
     finalLabel = otherTitle.value ? `other-${otherTitle.value}` : 'other-untitled';
     finalProjectId = null;
   } else if (mainCategory.value === 'Focus Mode') {
-    finalLabel = 'focus-untitled';
+    finalLabel = 'focus-mode';
     finalProjectId = null;
   } else if (mainCategory.value === 'Project') {
     if (!finalProjectId) finalLabel = 'project-untitled';
