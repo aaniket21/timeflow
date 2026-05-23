@@ -16,8 +16,8 @@ class BadgesTableTest extends TestCase
             'name',
             'description',
             'icon',
-            'category',
-            'xp_reward',
+            'condition_type',
+            'condition_value',
         ]));
     }
 }

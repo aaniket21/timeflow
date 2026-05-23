@@ -16,9 +16,7 @@ class CategoryFactory extends Factory
             'user_id' => User::factory(),
             'name' => $this->faker->words(2, true),
             'color' => '#'.ltrim($this->faker->hexColor(), '#'),
-            'icon' => $this->faker->boolean(50) ? $this->faker->word() : null,
             'parent_id' => null,
-            'archived' => false,
             'created_at' => now(),
         ];
     }

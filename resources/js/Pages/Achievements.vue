@@ -2,6 +2,9 @@
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import { useTime } from '../composables/useTime';
+
+const { formatDate } = useTime();
 
 const props = defineProps({
   navigation: {
@@ -90,7 +93,7 @@ const loadGamification = async () => {
           id: entry.id,
           reason: entry.reason || 'Session logged',
           xp: entry.xp || 0,
-          date: new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          date: formatDate(entry.created_at, 'MMM D'),
         }));
       }
     } catch {

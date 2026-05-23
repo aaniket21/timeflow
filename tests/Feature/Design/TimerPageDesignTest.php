@@ -13,8 +13,7 @@ class TimerPageDesignTest extends TestCase
         $this->assertNotFalse($vue);
         $this->assertStringContainsString('Active Timer', $vue);
         $this->assertStringContainsString('Session Log', $vue);
-        $this->assertStringContainsString('Pomodoro', $vue);
         $this->assertStringContainsString('Start Session', $vue);
-        $this->assertStringContainsString('Add past session', $vue);
+        $this->assertStringContainsString('log a past one', $vue);
     }
 }

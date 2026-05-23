@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Middleware\EnsureTimezoneIsSet;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetUserTimezone;
 use App\Providers\AuthServiceProvider;
 use App\Providers\FortifyServiceProvider;
 use Illuminate\Foundation\Application;
@@ -21,13 +21,15 @@ return Application::configure(basePath: dirname(__DIR__))
         FortifyServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
+        // PRD §6 — SetUserTimezone registered on BOTH web and api groups
         $middleware->api(prepend: [
             EnsureFrontendRequestsAreStateful::class,
+            SetUserTimezone::class,
         ]);
 
         $middleware->web(append: [
             HandleInertiaRequests::class,
-            EnsureTimezoneIsSet::class,
+            SetUserTimezone::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

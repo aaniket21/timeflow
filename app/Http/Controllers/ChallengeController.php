@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\TimeHelper;
 use App\Models\DailyChallenge;
 use App\Models\UserChallengeCompletion;
 use Carbon\Carbon;
@@ -10,10 +11,15 @@ use Illuminate\Http\Request;
 
 class ChallengeController extends Controller
 {
+    /**
+     * PRD §6 — Today's challenge uses TimeHelper::todayForUser() as default date.
+     */
     public function today(Request $request): JsonResponse
     {
         $user = $request->user();
-        $dateInput = $request->query('date', now()->toDateString());
+
+        // PRD §6 — Use timezone-aware "today" as default
+        $dateInput = $request->query('date', TimeHelper::todayForUser($user));
         $date = Carbon::parse($dateInput)->toDateString();
 
         $challenge = $this->resolveChallengeForDate($date);
@@ -29,9 +35,10 @@ class ChallengeController extends Controller
             ]);
         }
 
+        // V2: completed_on column instead of date
         $completed = UserChallengeCompletion::query()
             ->where('user_id', $user->id)
-            ->where('date', $date)
+            ->where('completed_on', $date)
             ->exists();
 
         return response()->json([
@@ -42,8 +49,8 @@ class ChallengeController extends Controller
                     'id' => $challenge->id,
                     'title' => $challenge->title,
                     'description' => $challenge->description,
-                    'type' => $challenge->type,
-                    'target_value' => $challenge->target_value,
+                    'type' => $challenge->condition_type,
+                    'target_value' => $challenge->condition_value,
                     'xp_reward' => $challenge->xp_reward,
                 ],
                 'completed' => $completed,

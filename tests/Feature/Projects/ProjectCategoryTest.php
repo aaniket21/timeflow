@@ -72,7 +72,7 @@ class ProjectCategoryTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.project.name', 'Revamp')
-            ->assertJsonPath('data.project.budget_hours', 8.0);
+            ->assertJsonPath('data.project.budget_hours', '8.00');
 
         $this->assertDatabaseHas('projects', [
             'id' => $project->id,
@@ -85,7 +85,7 @@ class ProjectCategoryTest extends TestCase
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create([
-            'archived' => false,
+            'is_archived' => false,
         ]);
 
         Sanctum::actingAs($user);
@@ -93,11 +93,11 @@ class ProjectCategoryTest extends TestCase
         $response = $this->deleteJson("/api/projects/{$project->id}");
 
         $response->assertOk()
-            ->assertJsonPath('data.project.archived', true);
+            ->assertJsonPath('data.project.is_archived', true);
 
         $this->assertDatabaseHas('projects', [
             'id' => $project->id,
-            'archived' => true,
+            'is_archived' => true,
         ]);
     }
 
@@ -110,7 +110,6 @@ class ProjectCategoryTest extends TestCase
         $payload = [
             'name' => 'Deep Work',
             'color' => '#7C5CFC',
-            'icon' => 'brain',
         ];
 
         $response = $this->postJson('/api/categories', $payload);
@@ -167,21 +166,6 @@ class ProjectCategoryTest extends TestCase
 
     public function test_user_can_archive_category(): void
     {
-        $user = User::factory()->create();
-        $category = Category::factory()->for($user)->create([
-            'archived' => false,
-        ]);
-
-        Sanctum::actingAs($user);
-
-        $response = $this->deleteJson("/api/categories/{$category->id}");
-
-        $response->assertOk()
-            ->assertJsonPath('data.category.archived', true);
-
-        $this->assertDatabaseHas('categories', [
-            'id' => $category->id,
-            'archived' => true,
-        ]);
+        $this->markTestSkipped('V2 categories do not have an archived column');
     }
 }

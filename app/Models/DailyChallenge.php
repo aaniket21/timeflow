@@ -11,13 +11,22 @@ class DailyChallenge extends Model
 
     public $timestamps = false;
 
+    const UPDATED_AT = null;
+
     protected $table = 'daily_challenges';
 
     protected $fillable = [
+        'slug',
         'title',
         'description',
-        'type',
-        'target_value',
+        'difficulty',
         'xp_reward',
+        'condition_type',
+        'condition_value',
+    ];
+
+    protected $casts = [
+        'xp_reward' => 'integer',
+        'condition_value' => 'integer',
     ];
 }

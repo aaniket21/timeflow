@@ -2,29 +2,35 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\TimeHelper;
 use App\Models\Category;
 use App\Models\Project;
 use App\Models\TimeSession;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AnalyticsController extends Controller
 {
     public function daily(Request $request): JsonResponse
     {
         $user = $request->user();
-        $dateInput = $request->query('date', now()->toDateString());
-        $date = Carbon::parse($dateInput)->toDateString();
+        $dateInput = $request->query('date', TimeHelper::todayForUser($user));
+        $date = $dateInput;
+
+        // PRD §6 — Use timezone-aware UTC bounds instead of whereDate()
+        [$dayStart, $dayEnd] = TimeHelper::dateBoundsUtc($user, $date);
 
         $baseQuery = TimeSession::query()
             ->where('user_id', $user->id)
-            ->whereDate('started_at', $date)
+            ->whereBetween('started_at', [$dayStart, $dayEnd])
             ->whereNotNull('ended_at');
 
         $sessions = (clone $baseQuery)
             ->orderBy('started_at')
-            ->get(['id', 'project_id', 'category_id', 'started_at', 'duration_seconds']);
+            ->get(['id', 'project_id', 'started_at', 'duration_seconds', 'label']);
 
         $totalSeconds = (int) $baseQuery->sum('duration_seconds');
         $focusSessions = (int) (clone $baseQuery)->count();
@@ -35,9 +41,10 @@ class AnalyticsController extends Controller
 
         $hourlyTotals = array_fill(0, 24, 0);
         $longestSessionSeconds = 0;
+        $tz = $user->timezone ?? 'UTC';
 
         foreach ($sessions as $session) {
-            $hour = Carbon::parse($session->started_at)->hour;
+            $hour = Carbon::parse($session->started_at)->setTimezone($tz)->hour;
             $hourlyTotals[$hour] += (int) $session->duration_seconds;
             $longestSessionSeconds = max($longestSessionSeconds, (int) $session->duration_seconds);
         }
@@ -50,7 +57,7 @@ class AnalyticsController extends Controller
             ];
         }
 
-        $sessionDisplay = $this->mapSessionDisplay($sessions);
+        $sessionDisplay = $this->mapSessionDisplay($sessions, $tz);
 
         return response()->json([
             'success' => true,
@@ -70,20 +77,24 @@ class AnalyticsController extends Controller
     public function weekly(Request $request): JsonResponse
     {
         $user = $request->user();
-        $startInput = $request->query('start', now()->startOfWeek()->toDateString());
-        $startDate = Carbon::parse($startInput)->startOfDay();
-        $endDate = $startDate->copy()->addDays(6)->endOfDay();
-        
+        $startInput = $request->query('start');
+        [$weekStartUtc, $weekEndUtc] = $startInput
+            ? TimeHelper::weekBoundsUtc($user, $startInput)
+            : [TimeHelper::startOfWeekUtc($user), TimeHelper::endOfWeekUtc($user)];
+        $tz = $user->timezone ?? 'UTC';
+        $startDate = $weekStartUtc->setTimezone($tz)->startOfDay();
+        $endDate = $weekEndUtc->setTimezone($tz)->endOfDay();
+
         $sessions = TimeSession::query()
             ->where('user_id', $user->id)
             ->whereNotNull('ended_at')
-            ->whereBetween('started_at', [$startDate, $endDate])
-            ->get(['started_at', 'duration_seconds', 'project_id', 'category_id']);
+            ->whereBetween('started_at', [$weekStartUtc, $weekEndUtc])
+            ->get(['started_at', 'duration_seconds', 'project_id']);
         
         $dayTotals = [];
         
         foreach ($sessions as $session) {
-            $dayKey = Carbon::parse($session->started_at)->toDateString();
+            $dayKey = Carbon::parse($session->started_at)->setTimezone($tz)->toDateString();
             $dayTotals[$dayKey] = ($dayTotals[$dayKey] ?? 0) + (int) $session->duration_seconds;
         }
         
@@ -141,21 +152,22 @@ class AnalyticsController extends Controller
     public function monthly(Request $request): JsonResponse
     {
         $user = $request->user();
-        $monthInput = $request->query('month', now()->format('Y-m'));
-        $monthStart = Carbon::parse($monthInput)->startOfMonth()->startOfDay();
-        $monthEnd = $monthStart->copy()->endOfMonth()->endOfDay();
+        $tz = $user->timezone ?? 'UTC';
+        $monthInput = $request->query('month', CarbonImmutable::now($tz)->format('Y-m'));
+        [$monthStartUtc, $monthEndUtc] = TimeHelper::monthBoundsUtc($user, $monthInput . '-01');
+        $monthStart = CarbonImmutable::parse($monthInput . '-01', $tz);
 
         $sessions = TimeSession::query()
             ->where('user_id', $user->id)
             ->whereNotNull('ended_at')
-            ->whereBetween('started_at', [$monthStart, $monthEnd])
+            ->whereBetween('started_at', [$monthStartUtc, $monthEndUtc])
             ->get(['started_at', 'duration_seconds', 'project_id']);
 
         $dayTotals = [];
         $projectTotals = [];
 
         foreach ($sessions as $session) {
-            $dayKey = Carbon::parse($session->started_at)->toDateString();
+            $dayKey = Carbon::parse($session->started_at)->setTimezone($tz)->toDateString();
             $dayTotals[$dayKey] = ($dayTotals[$dayKey] ?? 0) + (int) $session->duration_seconds;
 
             if ($session->project_id) {
@@ -353,7 +365,7 @@ class AnalyticsController extends Controller
         ]);
     }
 
-    private function mapSessionDisplay($sessions): array
+    private function mapSessionDisplay($sessions, string $tz = 'UTC'): array
     {
         $projectIds = $sessions->pluck('project_id')->filter()->unique();
         $projects = $projectIds->isNotEmpty()
@@ -363,12 +375,10 @@ class AnalyticsController extends Controller
                 ->keyBy('id')
             : collect();
 
-        $categoryIds = $sessions->pluck('category_id')->filter();
-        if ($projects->isNotEmpty()) {
-            $categoryIds = $categoryIds->merge($projects->pluck('category_id')->filter());
-        }
+        $categoryIds = $projects->isNotEmpty()
+            ? $projects->pluck('category_id')->filter()->unique()
+            : collect();
 
-        $categoryIds = $categoryIds->unique();
         $categories = $categoryIds->isNotEmpty()
             ? Category::query()
                 ->whereIn('id', $categoryIds)
@@ -376,16 +386,15 @@ class AnalyticsController extends Controller
                 ->keyBy('id')
             : collect();
 
-        return $sessions->map(function (TimeSession $session) use ($projects, $categories) {
+        return $sessions->map(function (TimeSession $session) use ($projects, $categories, $tz) {
             $project = $session->project_id ? $projects->get($session->project_id) : null;
-            $category = $session->category_id ? $categories->get($session->category_id) : null;
             $projectCategory = $project && $project->category_id
                 ? $categories->get($project->category_id)
                 : null;
 
-            $label = $project->name ?? $category->name ?? 'Session';
-            $categoryLabel = $category->name ?? ($projectCategory?->name ?? 'General');
-            $color = $project->color ?? $category->color ?? '#9ca3af';
+            $label = $session->label ?? $project?->name ?? 'Session';
+            $categoryLabel = $projectCategory?->name ?? 'General';
+            $color = $project?->color ?? '#9ca3af';
 
             return [
                 'id' => $session->id,
@@ -408,12 +417,10 @@ class AnalyticsController extends Controller
                 ->keyBy('id')
             : collect();
 
-        $categoryIds = $sessions->pluck('category_id')->filter();
-        if ($projects->isNotEmpty()) {
-            $categoryIds = $categoryIds->merge($projects->pluck('category_id')->filter());
-        }
+        $categoryIds = $projects->isNotEmpty()
+            ? $projects->pluck('category_id')->filter()->unique()
+            : collect();
 
-        $categoryIds = $categoryIds->unique();
         $categories = $categoryIds->isNotEmpty()
             ? Category::query()
                 ->whereIn('id', $categoryIds)
@@ -425,7 +432,7 @@ class AnalyticsController extends Controller
 
         foreach ($sessions as $session) {
             $project = $session->project_id ? $projects->get($session->project_id) : null;
-            $categoryId = $session->category_id ?? ($project?->category_id ?? null);
+            $categoryId = $project?->category_id ?? null;
 
             if (! $categoryId) {
                 $categoryTotals['uncategorized'] = ($categoryTotals['uncategorized'] ?? 0) + (int) $session->duration_seconds;

@@ -19,8 +19,8 @@ class StreakBadgeTest extends TestCase
             'name' => 'First Flame',
             'description' => '3-day streak',
             'icon' => '🔥',
-            'category' => 'consistency',
-            'xp_reward' => 0,
+            'condition_type' => 'streak',
+            'condition_value' => 3,
         ]);
 
         $user = User::factory()->create();
@@ -34,7 +34,6 @@ class StreakBadgeTest extends TestCase
             'started_at' => now()->subMinutes(10),
             'ended_at' => null,
             'duration_seconds' => null,
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);
@@ -58,8 +57,8 @@ class StreakBadgeTest extends TestCase
             'name' => 'Week Warrior',
             'description' => '7-day streak',
             'icon' => '💪',
-            'category' => 'consistency',
-            'xp_reward' => 0,
+            'condition_type' => 'streak',
+            'condition_value' => 7,
         ]);
 
         $user = User::factory()->create();
@@ -73,7 +72,6 @@ class StreakBadgeTest extends TestCase
             'started_at' => now()->subMinutes(10),
             'ended_at' => null,
             'duration_seconds' => null,
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);

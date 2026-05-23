@@ -17,7 +17,7 @@ class GoalFactory extends Factory
             'type' => 'daily_hours',
             'title' => $this->faker->words(3, true),
             'target_value' => $this->faker->randomFloat(2, 1, 10),
-            'active' => true,
+            'is_active' => true,
             'created_at' => now(),
         ];
     }

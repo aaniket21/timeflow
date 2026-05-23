@@ -2,6 +2,9 @@
 import axios from 'axios';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import { useTime } from '../composables/useTime';
+
+const { format, formatTime, sessionGroupLabel, toTimestamp, dayjs } = useTime();
 
 const props = defineProps({
   navigation: {
@@ -70,7 +73,7 @@ const timerDisplay = computed(() => {
 const statusLabel = computed(() => (isRunning.value ? 'Session in progress' : 'Ready to start'));
 const startStopLabel = computed(() => (isRunning.value ? 'Stop Session' : 'Start Session'));
 
-const dateLabel = computed(() => new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+const dateLabel = computed(() => format(undefined, 'ddd, MMM D'));
 
 const pomodoroDots = computed(() => {
   const dots = [];
@@ -107,13 +110,7 @@ const loadSessionLog = async (reset = false) => {
     if (Array.isArray(data)) {
       const grouped = {};
       data.forEach((s) => {
-        const d = new Date(s.started_at);
-        const today = new Date();
-        const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
-        let label;
-        if (d.toDateString() === today.toDateString()) label = 'Today';
-        else if (d.toDateString() === yesterday.toDateString()) label = 'Yesterday';
-        else label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const label = sessionGroupLabel(s.started_at);
 
         if (!grouped[label]) grouped[label] = [];
         grouped[label].push({
@@ -121,7 +118,7 @@ const loadSessionLog = async (reset = false) => {
           project: s.label || s.project?.name || s.category?.name || 'Untitled',
           category: s.category?.name || s.project?.category?.name || '',
           color: s.color || s.project?.color || s.category?.color || 'violet',
-          start: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          start: formatTime(s.started_at),
           duration: formatDuration(s.duration_seconds),
           notes: s.notes || '',
           type: s.type || 'timer',
@@ -221,7 +218,7 @@ const loadActiveSession = async () => {
 
       sessionNotes.value = session.notes || '';
 
-      const startedAt = new Date(session.started_at).getTime();
+      const startedAt = toTimestamp(session.started_at);
       timerSeconds.value = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
       isRunning.value = true;
       startTicking();

@@ -24,14 +24,12 @@ class DashboardDataTest extends TestCase
             'started_at' => $today->copy()->addHours(9),
             'ended_at' => $today->copy()->addHours(9)->addMinutes(30),
             'duration_seconds' => 1800,
-            'type' => 'timer',
         ]);
 
         TimeSession::factory()->for($user)->create([
             'started_at' => $older->copy()->addHours(8),
             'ended_at' => $older->copy()->addHours(12),
             'duration_seconds' => 14400,
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);
@@ -70,20 +68,16 @@ class DashboardDataTest extends TestCase
 
         $recent = TimeSession::factory()->for($user)->create([
             'project_id' => $project->id,
-            'category_id' => null,
             'started_at' => now()->subHours(2),
             'ended_at' => now()->subHours(1),
             'duration_seconds' => 3600,
-            'type' => 'timer',
         ]);
 
         TimeSession::factory()->for($user)->create([
             'project_id' => null,
-            'category_id' => $category->id,
             'started_at' => now()->subDays(1),
             'ended_at' => now()->subDays(1)->addMinutes(45),
             'duration_seconds' => 2700,
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);

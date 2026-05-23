@@ -23,4 +23,9 @@ class Exam extends Model
     protected $casts = [
         'exam_date' => 'date',
     ];
+
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

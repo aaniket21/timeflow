@@ -28,7 +28,6 @@ class DailyAnalyticsTest extends TestCase
             'started_at' => $startOne,
             'ended_at' => $endOne,
             'duration_seconds' => $endOne->diffInSeconds($startOne, true),
-            'type' => 'timer',
         ]);
 
         TimeSession::factory()->for($user)->create([
@@ -36,7 +35,6 @@ class DailyAnalyticsTest extends TestCase
             'started_at' => $startTwo,
             'ended_at' => $endTwo,
             'duration_seconds' => $endTwo->diffInSeconds($startTwo, true),
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);
@@ -65,7 +63,6 @@ class DailyAnalyticsTest extends TestCase
             'started_at' => $start,
             'ended_at' => $end,
             'duration_seconds' => $end->diffInSeconds($start, true),
-            'type' => 'pomodoro',
             'is_pomodoro' => true,
         ]);
 
@@ -104,7 +101,6 @@ class DailyAnalyticsTest extends TestCase
             'started_at' => $startOne,
             'ended_at' => $endOne,
             'duration_seconds' => $endOne->diffInSeconds($startOne, true),
-            'type' => 'timer',
         ]);
 
         TimeSession::factory()->for($user)->create([
@@ -112,7 +108,6 @@ class DailyAnalyticsTest extends TestCase
             'started_at' => $startTwo,
             'ended_at' => $endTwo,
             'duration_seconds' => $endTwo->diffInSeconds($startTwo, true),
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);

@@ -2,36 +2,36 @@
 
 namespace App\Models;
 
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TimeSession extends Model
 {
     use HasFactory;
-
-    public $timestamps = false;
 
     protected $table = 'time_sessions';
 
     protected $fillable = [
         'user_id',
         'project_id',
-        'category_id',
+        'label',
+        'label_type',
+        'notes',
         'started_at',
         'ended_at',
         'duration_seconds',
-        'notes',
-        'label',
+        'xp_earned',
         'is_pomodoro',
-        'type',
     ];
 
     protected $casts = [
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
         'is_pomodoro' => 'boolean',
+        'duration_seconds' => 'integer',
+        'xp_earned' => 'integer',
     ];
 
     public function user(): BelongsTo
@@ -44,8 +44,9 @@ class TimeSession extends Model
         return $this->belongsTo(Project::class);
     }
 
-    public function category(): BelongsTo
+    public function xpTransactions(): HasMany
     {
-        return $this->belongsTo(Category::class);
+        return $this->hasMany(XpTransaction::class, 'reference_id')
+            ->where('reference_type', self::class);
     }
 }

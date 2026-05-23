@@ -19,7 +19,7 @@ class CreateProjectRequest extends FormRequest
             'client_name' => ['nullable', 'string', 'max:100'],
             'budget_hours' => ['nullable', 'numeric', 'min:0'],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
-            'archived' => ['nullable', 'boolean'],
+            'is_archived' => ['nullable', 'boolean'],
         ];
     }
 }

@@ -14,8 +14,8 @@ class DailyChallengesTableTest extends TestCase
             'id',
             'title',
             'description',
-            'type',
-            'target_value',
+            'condition_type',
+            'condition_value',
             'xp_reward',
         ]));
     }

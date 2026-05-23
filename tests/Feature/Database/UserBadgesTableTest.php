@@ -14,7 +14,7 @@ class UserBadgesTableTest extends TestCase
             'id',
             'user_id',
             'badge_id',
-            'earned_at',
+            'unlocked_at',
         ]));
     }
 }

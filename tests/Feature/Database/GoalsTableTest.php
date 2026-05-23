@@ -16,7 +16,7 @@ class GoalsTableTest extends TestCase
             'type',
             'title',
             'target_value',
-            'active',
+            'is_active',
             'created_at',
         ]));
     }

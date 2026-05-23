@@ -17,6 +17,12 @@
     <!-- Tabler Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 
+    <!-- PRD §6 — Inject user timezone for frontend composable -->
+    <script>
+        window.__APP_TIMEZONE = @json(auth()->user()?->timezone ?? 'UTC');
+        window.__APP_USER_ID = @json(auth()->user()?->id);
+    </script>
+
     <!-- Dark mode init: prevents flash of wrong theme (DESIGN.md §10) -->
     <script>
         (function() {
@@ -26,6 +32,7 @@
             }
         })();
     </script>
+
 
     @if (! app()->environment('testing'))
         @vite(['resources/css/app.css', 'resources/js/app.js'])

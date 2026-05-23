@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\TimeHelper;
 use App\Http\Requests\StartSessionRequest;
 use App\Http\Requests\StopSessionRequest;
 use App\Http\Requests\StoreSessionRequest;
@@ -14,12 +15,17 @@ use App\Models\TimeSession;
 use App\Models\UserBadge;
 use App\Models\UserChallengeCompletion;
 use App\Models\XpTransaction;
+use App\Services\StreakService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SessionController extends Controller
 {
+    public function __construct(
+        private readonly StreakService $streakService,
+    ) {}
+
     private function determineLevel(int $xpTotal): int
     {
         $thresholds = [
@@ -61,7 +67,11 @@ class SessionController extends Controller
         return 1.0;
     }
 
-    private function grantXp(int $userId, int $amount, string $reason, array $meta = []): int
+    /**
+     * V2: XP transactions use reference_id/reference_type instead of meta JSON.
+     * reference_type stores a context key like 'date:2026-05-21' for daily dedup.
+     */
+    private function grantXp(int $userId, int $amount, string $reason, ?int $referenceId = null, ?string $referenceType = null): int
     {
         if ($amount <= 0) {
             return 0;
@@ -71,26 +81,38 @@ class SessionController extends Controller
             'user_id' => $userId,
             'amount' => $amount,
             'reason' => $reason,
-            'meta' => $meta,
+            'reference_id' => $referenceId,
+            'reference_type' => $referenceType,
         ]);
 
         return $amount;
     }
 
+    /**
+     * Check if a date-specific XP reward was already given today.
+     * Uses reference_type = 'date:{YYYY-MM-DD}' for daily dedup.
+     */
     private function hasDailyXp(int $userId, string $reason, string $date): bool
     {
         return XpTransaction::query()
             ->where('user_id', $userId)
             ->where('reason', $reason)
-            ->where('meta->date', $date)
+            ->where('reference_type', "date:{$date}")
             ->exists();
     }
 
-    private function dailyTotals(int $userId, string $date): array
+    /**
+     * PRD §6 — Timezone-aware daily totals.
+     * Uses TimeHelper::dateBoundsUtc() to query sessions within the user's
+     * local day, NOT whereDate() which is timezone-unaware.
+     */
+    private function dailyTotals($user, string $activityDateString): array
     {
+        [$dayStart, $dayEnd] = TimeHelper::dateBoundsUtc($user, $activityDateString);
+
         $baseQuery = TimeSession::query()
-            ->where('user_id', $userId)
-            ->whereDate('started_at', $date)
+            ->where('user_id', $user->id)
+            ->whereBetween('started_at', [$dayStart, $dayEnd])
             ->whereNotNull('ended_at');
 
         $totalSeconds = (int) $baseQuery->sum('duration_seconds');
@@ -99,15 +121,18 @@ class SessionController extends Controller
         return [$totalSeconds, $pomodoroCount];
     }
 
-    private function weeklyTotalSeconds(int $userId, Carbon $date): int
+    /**
+     * PRD §6 — Timezone-aware weekly total.
+     * Uses TimeHelper::weekBoundsUtc() instead of raw Carbon start/endOfWeek.
+     */
+    private function weeklyTotalSeconds($user, string $activityDateString): int
     {
-        $start = $date->copy()->startOfWeek()->startOfDay();
-        $end = $date->copy()->endOfWeek()->endOfDay();
+        [$weekStart, $weekEnd] = TimeHelper::weekBoundsUtc($user, $activityDateString);
 
         return (int) TimeSession::query()
-            ->where('user_id', $userId)
+            ->where('user_id', $user->id)
             ->whereNotNull('ended_at')
-            ->whereBetween('started_at', [$start, $end])
+            ->whereBetween('started_at', [$weekStart, $weekEnd])
             ->sum('duration_seconds');
     }
 
@@ -138,12 +163,12 @@ class SessionController extends Controller
 
         $meetsTarget = false;
 
-        if ($challenge->type === 'hours_logged') {
-            $meetsTarget = $dailyTotalSeconds >= (int) round($challenge->target_value * 3600);
+        if ($challenge->condition_type === 'hours_logged') {
+            $meetsTarget = $dailyTotalSeconds >= (int) round($challenge->condition_value * 3600);
         }
 
-        if ($challenge->type === 'pomodoros') {
-            $meetsTarget = $dailyPomodoros >= (int) $challenge->target_value;
+        if ($challenge->condition_type === 'pomodoros') {
+            $meetsTarget = $dailyPomodoros >= (int) $challenge->condition_value;
         }
 
         if (! $meetsTarget) {
@@ -151,15 +176,11 @@ class SessionController extends Controller
         }
 
         $completion = UserChallengeCompletion::firstOrCreate(
-            ['user_id' => $userId, 'date' => Carbon::parse($date)->startOfDay()],
-            ['challenge_id' => $challenge->id, 'completed_at' => now()]
+            ['user_id' => $userId, 'challenge_id' => $challenge->id, 'completed_on' => Carbon::parse($date)->toDateString()],
         );
 
         if ($completion->wasRecentlyCreated) {
-            return $this->grantXp($userId, (int) $challenge->xp_reward, 'daily_challenge', [
-                'date' => $date,
-                'challenge_id' => $challenge->id,
-            ]);
+            return $this->grantXp($userId, (int) $challenge->xp_reward, 'daily_challenge', $challenge->id, "date:{$date}");
         }
 
         return 0;
@@ -185,7 +206,7 @@ class SessionController extends Controller
         UserBadge::create([
             'user_id' => $userId,
             'badge_id' => $badge->id,
-            'earned_at' => now(),
+            'unlocked_at' => now(),
         ]);
 
         $badgesEarned[] = [
@@ -194,13 +215,6 @@ class SessionController extends Controller
             'name' => $badge->name,
             'icon' => $badge->icon,
         ];
-
-        if ($badge->xp_reward > 0) {
-            $xpGained += $this->grantXp($userId, (int) $badge->xp_reward, 'badge_reward', [
-                'badge_id' => $badge->id,
-                'slug' => $badge->slug,
-            ]);
-        }
     }
 
     private function hasDailyGoalStreak(int $userId, string $date, int $days): bool
@@ -208,78 +222,80 @@ class SessionController extends Controller
         $dates = [];
 
         for ($offset = 0; $offset < $days; $offset++) {
-            $dates[] = Carbon::parse($date)->subDays($offset)->toDateString();
+            $dates[] = 'date:' . Carbon::parse($date)->subDays($offset)->toDateString();
         }
 
         $count = XpTransaction::query()
             ->where('user_id', $userId)
             ->where('reason', 'daily_goal')
-            ->whereIn('meta->date', $dates)
+            ->whereIn('reference_type', $dates)
             ->count();
 
         return $count === $days;
     }
 
+    /**
+     * PRD §6 — Apply gamification with timezone-aware date logic.
+     *
+     * Key changes from V1:
+     * - Streak is delegated to StreakService::updateStreak()
+     * - Daily/weekly totals use TimeHelper bounds (not whereDate)
+     * - Activity date derived from session started_at in user's timezone
+     */
     private function applyGamification($user, TimeSession $session, Carbon $activityDate): array
     {
         $xpGained = 0;
         $badgesEarned = [];
         $newLevel = null;
-        $activityDateString = $activityDate->toDateString();
 
-        $lastActive = $user->last_active_date
-            ? Carbon::parse($user->last_active_date)->toDateString()
-            : null;
-        $streakCurrent = $user->streak_current;
-        $isNewDay = $lastActive !== $activityDateString;
+        // PRD §6.6 — Activity date is the day the session started in user's timezone
+        $tz = $user->timezone ?? 'UTC';
+        $activityDateString = Carbon::parse($session->started_at)
+            ->setTimezone($tz)
+            ->toDateString();
 
-        if ($isNewDay) {
-            $isYesterday = $lastActive === Carbon::parse($activityDateString)->subDay()->toDateString();
-            $streakCurrent = $isYesterday ? $user->streak_current + 1 : 1;
+        // Delegate streak to StreakService (PRD §6)
+        $streakResult = $this->streakService->updateStreak($user);
+        $user->refresh();
 
-            $xpGained += $this->grantXp($user->id, 5, 'first_session', [
-                'date' => $activityDateString,
-                'session_id' => $session->id,
-            ]);
+        $streakCurrent = $streakResult['streak_current'];
+        $isNewDay = $user->last_active_date
+            ? $user->last_active_date->toDateString() === TimeHelper::todayForUser($user)
+            : false;
+
+        // Check if this is the first session of a new day by looking at XP records
+        $hasFirstSessionXp = $this->hasDailyXp($user->id, 'first_session', $activityDateString);
+
+        if (! $hasFirstSessionXp) {
+            $xpGained += $this->grantXp($user->id, 5, 'first_session', $session->id, "date:{$activityDateString}");
 
             $multiplier = $this->streakMultiplier($streakCurrent);
             $streakXp = (int) round(5 * $multiplier);
-            $xpGained += $this->grantXp($user->id, $streakXp, 'streak_daily', [
-                'date' => $activityDateString,
-                'streak_day' => $streakCurrent,
-                'multiplier' => $multiplier,
-            ]);
+            $xpGained += $this->grantXp($user->id, $streakXp, 'streak_daily', null, "date:{$activityDateString}");
         }
 
         if ($session->is_pomodoro && $session->duration_seconds >= ($user->pomodoro_work_min * 60)) {
-            $xpGained += $this->grantXp($user->id, 10, 'pomodoro_complete', [
-                'session_id' => $session->id,
-            ]);
+            $xpGained += $this->grantXp($user->id, 10, 'pomodoro_complete', $session->id);
             $this->awardBadge($user->id, 'tomato_head', $badgesEarned, $xpGained);
         }
 
-        [$dailyTotalSeconds, $dailyPomodoros] = $this->dailyTotals($user->id, $activityDateString);
+        // PRD §6 — Use timezone-aware daily totals
+        [$dailyTotalSeconds, $dailyPomodoros] = $this->dailyTotals($user, $activityDateString);
 
         $dailyGoalSeconds = (int) round($user->daily_goal_hours * 3600);
         $dailyGoalAchieved = $dailyGoalSeconds > 0 && $dailyTotalSeconds >= $dailyGoalSeconds;
 
         if ($dailyGoalAchieved && ! $this->hasDailyXp($user->id, 'daily_goal', $activityDateString)) {
-            $xpGained += $this->grantXp($user->id, 25, 'daily_goal', [
-                'date' => $activityDateString,
-                'total_seconds' => $dailyTotalSeconds,
-            ]);
+            $xpGained += $this->grantXp($user->id, 25, 'daily_goal', null, "date:{$activityDateString}");
         }
 
         if ($dailyTotalSeconds >= (8 * 3600) && ! $this->hasDailyXp($user->id, 'daily_8_hours', $activityDateString)) {
-            $xpGained += $this->grantXp($user->id, 100, 'daily_8_hours', [
-                'date' => $activityDateString,
-                'total_seconds' => $dailyTotalSeconds,
-            ]);
+            $xpGained += $this->grantXp($user->id, 100, 'daily_8_hours', null, "date:{$activityDateString}");
         }
 
         $xpGained += $this->applyDailyChallenge($user->id, $activityDateString, $dailyTotalSeconds, $dailyPomodoros);
 
-        if ($isNewDay) {
+        if (! $hasFirstSessionXp) {
             if ($streakCurrent >= 3) {
                 $this->awardBadge($user->id, 'first_flame', $badgesEarned, $xpGained);
             }
@@ -309,7 +325,8 @@ class SessionController extends Controller
             $this->awardBadge($user->id, 'time_lord', $badgesEarned, $xpGained);
         }
 
-        $weeklySeconds = $this->weeklyTotalSeconds($user->id, $activityDate);
+        // PRD §6 — Use timezone-aware weekly total
+        $weeklySeconds = $this->weeklyTotalSeconds($user, $activityDateString);
         if ($weeklySeconds >= 36000) {
             $this->awardBadge($user->id, 'ten_hour_club', $badgesEarned, $xpGained);
         }
@@ -330,9 +347,6 @@ class SessionController extends Controller
         }
 
         $user->forceFill([
-            'last_active_date' => $activityDateString,
-            'streak_current' => $streakCurrent,
-            'streak_longest' => max($user->streak_longest, $streakCurrent),
             'xp_total' => $newXpTotal,
             'level' => $calculatedLevel,
         ])->save();
@@ -357,14 +371,12 @@ class SessionController extends Controller
         $session = TimeSession::create([
             'user_id' => $user->id,
             'project_id' => $data['project_id'] ?? null,
-            'category_id' => $data['category_id'] ?? null,
             'started_at' => $startedAt,
             'ended_at' => null,
             'duration_seconds' => null,
             'notes' => $data['notes'] ?? null,
             'label' => $data['label'] ?? null,
             'is_pomodoro' => $type === 'pomodoro',
-            'type' => $type,
         ]);
 
         return response()->json([
@@ -373,13 +385,12 @@ class SessionController extends Controller
                 'session' => [
                     'id' => $session->id,
                     'project_id' => $session->project_id,
-                    'category_id' => $session->category_id,
                     'started_at' => Carbon::parse($session->started_at)->toIso8601String(),
                     'ended_at' => $session->ended_at,
                     'duration_seconds' => $session->duration_seconds,
                     'notes' => $session->notes,
+                    'label' => $session->label,
                     'is_pomodoro' => $session->is_pomodoro,
-                    'type' => $session->type,
                 ],
             ],
             'meta' => [
@@ -402,17 +413,15 @@ class SessionController extends Controller
         $session = TimeSession::create([
             'user_id' => $user->id,
             'project_id' => $data['project_id'] ?? null,
-            'category_id' => $data['category_id'] ?? null,
             'started_at' => $startedAt,
             'ended_at' => $endedAt,
             'duration_seconds' => $durationSeconds,
             'notes' => $data['notes'] ?? null,
             'label' => $data['label'] ?? null,
             'is_pomodoro' => $type === 'pomodoro',
-            'type' => $type,
         ]);
 
-        $meta = $this->applyGamification($user, $session, $endedAt);
+        $meta = $this->applyGamification($user, $session, $startedAt);
 
         return response()->json([
             'success' => true,
@@ -420,13 +429,12 @@ class SessionController extends Controller
                 'session' => [
                     'id' => $session->id,
                     'project_id' => $session->project_id,
-                    'category_id' => $session->category_id,
                     'started_at' => Carbon::parse($session->started_at)->toIso8601String(),
                     'ended_at' => Carbon::parse($session->ended_at)->toIso8601String(),
                     'duration_seconds' => $session->duration_seconds,
                     'notes' => $session->notes,
+                    'label' => $session->label,
                     'is_pomodoro' => $session->is_pomodoro,
-                    'type' => $session->type,
                 ],
             ],
             'meta' => $meta,
@@ -454,10 +462,6 @@ class SessionController extends Controller
             $updates['project_id'] = $data['project_id'];
         }
 
-        if (array_key_exists('category_id', $data)) {
-            $updates['category_id'] = $data['category_id'];
-        }
-
         if (array_key_exists('notes', $data)) {
             $updates['notes'] = $data['notes'];
         }
@@ -478,10 +482,6 @@ class SessionController extends Controller
             $updates['duration_seconds'] = $endedAt->diffInSeconds($startedAt, true);
         }
 
-        if (array_key_exists('type', $data)) {
-            $updates['is_pomodoro'] = $data['type'] === 'pomodoro';
-        }
-
         $timeSession->update($updates);
 
         return response()->json([
@@ -490,15 +490,14 @@ class SessionController extends Controller
                 'session' => [
                     'id' => $timeSession->id,
                     'project_id' => $timeSession->project_id,
-                    'category_id' => $timeSession->category_id,
                     'started_at' => Carbon::parse($timeSession->started_at)->toIso8601String(),
                     'ended_at' => $timeSession->ended_at
                         ? Carbon::parse($timeSession->ended_at)->toIso8601String()
                         : null,
                     'duration_seconds' => $timeSession->duration_seconds,
                     'notes' => $timeSession->notes,
+                    'label' => $timeSession->label,
                     'is_pomodoro' => $timeSession->is_pomodoro,
-                    'type' => $timeSession->type,
                 ],
             ],
             'meta' => [
@@ -540,14 +539,12 @@ class SessionController extends Controller
                 'session' => [
                     'id' => $timeSession->id,
                     'project_id' => $timeSession->project_id,
-                    'category_id' => $timeSession->category_id,
                     'started_at' => Carbon::parse($timeSession->started_at)->toIso8601String(),
                     'ended_at' => Carbon::parse($timeSession->ended_at)->toIso8601String(),
                     'duration_seconds' => $timeSession->duration_seconds,
                     'notes' => $timeSession->notes,
                     'label' => $timeSession->label,
                     'is_pomodoro' => $timeSession->is_pomodoro,
-                    'type' => $timeSession->type,
                 ],
             ],
             'meta' => $meta,
@@ -561,7 +558,7 @@ class SessionController extends Controller
         $limit = max(1, min(50, $limit));
 
         $sessions = TimeSession::query()
-            ->with(['project.category', 'category'])
+            ->with(['project.category'])
             ->where('user_id', $user->id)
             ->whereNotNull('ended_at')
             ->orderByDesc('started_at')
@@ -605,7 +602,7 @@ class SessionController extends Controller
             ->whereNotNull('ended_at')
             ->orderByDesc('started_at')
             ->limit($limit)
-            ->get(['id', 'project_id', 'category_id', 'started_at', 'duration_seconds', 'label']);
+            ->get(['id', 'project_id', 'started_at', 'duration_seconds', 'label']);
 
         $projectIds = $sessions->pluck('project_id')->filter()->unique();
         $projects = $projectIds->isNotEmpty()
@@ -615,12 +612,10 @@ class SessionController extends Controller
                 ->keyBy('id')
             : collect();
 
-        $categoryIds = $sessions->pluck('category_id')->filter();
-        if ($projects->isNotEmpty()) {
-            $categoryIds = $categoryIds->merge($projects->pluck('category_id')->filter());
-        }
+        $categoryIds = $projects->isNotEmpty()
+            ? $projects->pluck('category_id')->filter()->unique()
+            : collect();
 
-        $categoryIds = $categoryIds->unique();
         $categories = $categoryIds->isNotEmpty()
             ? Category::query()
                 ->whereIn('id', $categoryIds)
@@ -630,14 +625,13 @@ class SessionController extends Controller
 
         $data = $sessions->map(function (TimeSession $session) use ($projects, $categories) {
             $project = $session->project_id ? $projects->get($session->project_id) : null;
-            $category = $session->category_id ? $categories->get($session->category_id) : null;
             $projectCategory = $project && $project->category_id
                 ? $categories->get($project->category_id)
                 : null;
 
-            $label = $session->label ?? $project->name ?? $category->name ?? 'Session';
-            $categoryLabel = $category->name ?? ($projectCategory?->name ?? 'General');
-            $color = $project->color ?? $category->color ?? '#9ca3af';
+            $label = $session->label ?? $project?->name ?? 'Session';
+            $categoryLabel = $projectCategory?->name ?? 'General';
+            $color = $project?->color ?? '#9ca3af';
 
             return [
                 'id' => $session->id,
@@ -646,7 +640,6 @@ class SessionController extends Controller
                 'color' => $color,
                 'duration_seconds' => (int) ($session->duration_seconds ?? 0),
                 'started_at' => Carbon::parse($session->started_at)->toIso8601String(),
-                'type' => $session->type,
             ];
         });
 
@@ -666,7 +659,6 @@ class SessionController extends Controller
             ->first();
 
         $project = null;
-        $category = null;
         $projectCategory = null;
 
         if ($session && $session->project_id) {
@@ -676,18 +668,14 @@ class SessionController extends Controller
             }
         }
 
-        if ($session && $session->category_id) {
-            $category = Category::query()->find($session->category_id, ['id', 'name', 'color']);
-        }
-
         $label = $session
-            ? ($session->label ?? $project?->name ?? $category?->name ?? 'Session')
+            ? ($session->label ?? $project?->name ?? 'Session')
             : null;
         $categoryLabel = $session
-            ? ($category?->name ?? ($projectCategory?->name ?? 'General'))
+            ? ($projectCategory?->name ?? 'General')
             : null;
         $color = $session
-            ? ($project?->color ?? $category?->color ?? 'violet')
+            ? ($project?->color ?? 'violet')
             : null;
 
         return response()->json([
@@ -697,13 +685,11 @@ class SessionController extends Controller
                     ? [
                         'id' => $session->id,
                         'project_id' => $session->project_id,
-                        'category_id' => $session->category_id,
                         'started_at' => Carbon::parse($session->started_at)->toIso8601String(),
                         'ended_at' => $session->ended_at,
                         'duration_seconds' => $session->duration_seconds,
                         'notes' => $session->notes,
                         'is_pomodoro' => $session->is_pomodoro,
-                        'type' => $session->type,
                         'label' => $label,
                         'category' => $categoryLabel,
                         'color' => $color,

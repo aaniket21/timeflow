@@ -3,6 +3,9 @@ import axios from 'axios';
 import { onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 import ModalBase from '../Components/ModalBase.vue';
+import { useTime } from '../composables/useTime';
+
+const { formatDate } = useTime();
 
 const props = defineProps({
   navigation: {
@@ -17,11 +20,7 @@ const reportForm = ref({ title: '', date_from: '', date_to: '' });
 
 const formatRange = (start, end) => {
   if (!start || !end) return 'Range unavailable';
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  const startLabel = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const endLabel = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return `${startLabel} - ${endLabel}`;
+  return `${formatDate(start, 'MMM D')} - ${formatDate(end, 'MMM D')}`;
 };
 
 const loadReports = async () => {

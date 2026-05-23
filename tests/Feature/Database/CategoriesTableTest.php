@@ -15,9 +15,7 @@ class CategoriesTableTest extends TestCase
             'user_id',
             'name',
             'color',
-            'icon',
             'parent_id',
-            'archived',
             'created_at',
         ]));
     }

@@ -4,12 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Goal extends Model
 {
     use HasFactory;
-
-    public $timestamps = false;
 
     protected $table = 'goals';
 
@@ -18,12 +18,22 @@ class Goal extends Model
         'type',
         'title',
         'target_value',
-        'active',
+        'is_active',
         'reminder_time',
     ];
 
     protected $casts = [
-        'active' => 'boolean',
-        'target_value' => 'float',
+        'is_active' => 'boolean',
+        'target_value' => 'decimal:2',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function habitLogs(): HasMany
+    {
+        return $this->hasMany(HabitLog::class);
+    }
 }

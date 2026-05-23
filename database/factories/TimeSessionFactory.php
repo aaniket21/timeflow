@@ -18,13 +18,11 @@ class TimeSessionFactory extends Factory
         return [
             'user_id' => User::factory(),
             'project_id' => Project::factory(),
-            'category_id' => null,
             'started_at' => $start,
             'ended_at' => null,
             'duration_seconds' => null,
             'notes' => $this->faker->boolean(30) ? $this->faker->sentence() : null,
             'is_pomodoro' => false,
-            'type' => 'timer',
             'created_at' => now(),
         ];
     }

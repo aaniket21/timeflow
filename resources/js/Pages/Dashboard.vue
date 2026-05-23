@@ -3,6 +3,9 @@ import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import { useTime } from '../composables/useTime';
+
+const { format, todayDate, currentHour, daysUntil, toTimestamp } = useTime();
 
 const props = defineProps({
   navigation: {
@@ -46,7 +49,7 @@ const levelTitles = {
 
 const greetingName = computed(() => (userProfile.value.name ? userProfile.value.name.split(' ')[0] : 'there'));
 const greetingText = computed(() => {
-  const hour = new Date().getHours();
+  const hour = currentHour();
   if (hour < 12) return 'Good morning';
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
@@ -78,7 +81,7 @@ const liveBarPercent = computed(() => {
   return Math.min(100, Math.round((timerSeconds.value / goalSeconds) * 100));
 });
 
-const dateLabel = computed(() => new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+const dateLabel = computed(() => format(undefined, 'ddd, MMM D'));
 const hasActiveSession = computed(() => !!activeSession.value);
 const activeSessionLabel = computed(() => {
   if (!activeSession.value) return 'No active session';
@@ -102,7 +105,7 @@ const toggleHabit = async (id) => {
 
   try {
     const response = await axios.post(`/api/habits/${habit.id}/log`, {
-      date: new Date().toISOString().slice(0, 10),
+      date: todayDate(),
       done: nextDone,
     });
 
@@ -171,7 +174,7 @@ function buildHeatmapGrid(days) {
 
 function startTimer(startedAt) {
   if (!startedAt) return;
-  const startTime = new Date(startedAt).getTime();
+  const startTime = toTimestamp(startedAt);
 
   const updateTimer = () => {
     timerSeconds.value = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
@@ -248,7 +251,7 @@ async function saveDailyPlan() {
 
   try {
     await axios.post('/api/daily-plans', {
-      date: new Date().toISOString().slice(0, 10),
+      date: todayDate(),
       tasks: dailyPlan.value.map((task) => ({ text: task.text, done: task.done })),
     });
   } catch (error) {
@@ -326,7 +329,7 @@ async function loadDashboard() {
   const examsPayload = examsResult.status === 'fulfilled' ? examsResult.value.data?.data : null;
   if (Array.isArray(examsPayload)) {
     exams.value = examsPayload.map((exam) => {
-      const daysRemaining = Math.max(0, Math.ceil((new Date(exam.exam_date) - new Date()) / 86400000));
+      const daysRemaining = daysUntil(exam.exam_date);
       const urgency = daysRemaining <= 7 ? 'urgent' : daysRemaining <= 14 ? 'warn' : 'calm';
       return {
         id: exam.id,

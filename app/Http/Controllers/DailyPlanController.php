@@ -53,9 +53,7 @@ class DailyPlanController extends Controller
         $newLevel = null;
 
         if ($allDone && ! $this->hasDailyXp($user->id, 'daily_plan_complete', $date)) {
-            $xpGained += $this->grantXp($user->id, 30, 'daily_plan_complete', [
-                'date' => $date,
-            ]);
+            $xpGained += $this->grantXp($user->id, 30, 'daily_plan_complete', $date);
 
             $newXpTotal = $user->xp_total + $xpGained;
             $calculatedLevel = $this->determineLevel($newXpTotal);
@@ -82,16 +80,23 @@ class DailyPlanController extends Controller
         ]);
     }
 
+    /**
+     * Check if XP was already awarded for a specific reason and date.
+     * Uses reference_type to store the date string (xp_transactions has no meta column).
+     */
     private function hasDailyXp(int $userId, string $reason, string $date): bool
     {
         return XpTransaction::query()
             ->where('user_id', $userId)
             ->where('reason', $reason)
-            ->where('meta->date', $date)
+            ->where('reference_type', $date)
             ->exists();
     }
 
-    private function grantXp(int $userId, int $amount, string $reason, array $meta = []): int
+    /**
+     * Grant XP using reference_type to store the date for deduplication.
+     */
+    private function grantXp(int $userId, int $amount, string $reason, string $date): int
     {
         if ($amount <= 0) {
             return 0;
@@ -101,7 +106,7 @@ class DailyPlanController extends Controller
             'user_id' => $userId,
             'amount' => $amount,
             'reason' => $reason,
-            'meta' => $meta,
+            'reference_type' => $date,
         ]);
 
         return $amount;

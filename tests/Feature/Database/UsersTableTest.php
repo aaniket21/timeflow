@@ -16,7 +16,7 @@ class UsersTableTest extends TestCase
             'xp_total',
             'streak_current',
             'streak_longest',
-            'streak_shield',
+            'streak_shield_count',
             'last_active_date',
             'daily_goal_hours',
             'pomodoro_work_min',

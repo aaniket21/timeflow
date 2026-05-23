@@ -26,7 +26,7 @@ class GoalHabitTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonPath('data.goal.type', 'daily_hours')
-            ->assertJsonPath('data.goal.target_value', 6.0);
+            ->assertJsonPath('data.goal.target_value', '6.00');
 
         $this->assertDatabaseHas('goals', [
             'user_id' => $user->id,
@@ -41,7 +41,7 @@ class GoalHabitTest extends TestCase
 
         Goal::factory()->count(6)->for($user)->create([
             'type' => 'habit',
-            'active' => true,
+            'is_active' => true,
         ]);
 
         Sanctum::actingAs($user);

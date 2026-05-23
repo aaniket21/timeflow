@@ -29,7 +29,6 @@ class MonthlyAnalyticsTest extends TestCase
             'started_at' => $dayOneStart,
             'ended_at' => $dayOneEnd,
             'duration_seconds' => $dayOneEnd->diffInSeconds($dayOneStart, true),
-            'type' => 'timer',
         ]);
 
         TimeSession::factory()->for($user)->create([
@@ -37,7 +36,6 @@ class MonthlyAnalyticsTest extends TestCase
             'started_at' => $dayTwoStartA,
             'ended_at' => $dayTwoEndA,
             'duration_seconds' => $dayTwoEndA->diffInSeconds($dayTwoStartA, true),
-            'type' => 'timer',
         ]);
 
         TimeSession::factory()->for($user)->create([
@@ -45,7 +43,6 @@ class MonthlyAnalyticsTest extends TestCase
             'started_at' => $dayTwoStartB,
             'ended_at' => $dayTwoEndB,
             'duration_seconds' => $dayTwoEndB->diffInSeconds($dayTwoStartB, true),
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);
@@ -91,7 +88,6 @@ class MonthlyAnalyticsTest extends TestCase
             'started_at' => $dayOneStart,
             'ended_at' => $dayOneEnd,
             'duration_seconds' => $dayOneEnd->diffInSeconds($dayOneStart, true),
-            'type' => 'timer',
         ]);
 
         TimeSession::factory()->for($user)->create([
@@ -99,7 +95,6 @@ class MonthlyAnalyticsTest extends TestCase
             'started_at' => $dayTwoStart,
             'ended_at' => $dayTwoEnd,
             'duration_seconds' => $dayTwoEnd->diffInSeconds($dayTwoStart, true),
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);

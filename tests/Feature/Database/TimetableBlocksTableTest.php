@@ -16,12 +16,10 @@ class TimetableBlocksTableTest extends TestCase
             'title',
             'type',
             'color',
-            'project_id',
-            'days_of_week',
+            'day_of_week',
             'start_time',
             'end_time',
-            'active',
-            'semester_end',
+            'is_recurring',
             'created_at',
         ]));
     }

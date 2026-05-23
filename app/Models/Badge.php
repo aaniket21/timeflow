@@ -9,16 +9,22 @@ class Badge extends Model
 {
     use HasFactory;
 
+    protected $table = 'badges';
+
     public $timestamps = false;
 
-    protected $table = 'badges';
+    const UPDATED_AT = null;
 
     protected $fillable = [
         'slug',
         'name',
         'description',
         'icon',
-        'category',
-        'xp_reward',
+        'condition_type',
+        'condition_value',
+    ];
+
+    protected $casts = [
+        'condition_value' => 'integer',
     ];
 }

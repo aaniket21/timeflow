@@ -4,18 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HabitLog extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
-
     protected $table = 'habit_logs';
 
     protected $fillable = [
-        'user_id',
         'goal_id',
+        'user_id',
         'date',
         'done',
     ];
@@ -24,4 +23,14 @@ class HabitLog extends Model
         'date' => 'date',
         'done' => 'boolean',
     ];
+
+    public function goal(): BelongsTo
+    {
+        return $this->belongsTo(Goal::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

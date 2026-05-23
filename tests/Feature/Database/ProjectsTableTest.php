@@ -16,9 +16,10 @@ class ProjectsTableTest extends TestCase
             'category_id',
             'name',
             'color',
+            'icon',
             'client_name',
             'budget_hours',
-            'archived',
+            'is_archived',
             'created_at',
         ]));
     }

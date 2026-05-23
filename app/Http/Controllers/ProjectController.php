@@ -86,7 +86,7 @@ class ProjectController extends Controller
                 'budget_hours' => $budgetHours,
                 'total_seconds' => $totalSeconds,
                 'progress_percent' => $progress,
-                'archived' => (bool) $project->archived,
+                'is_archived' => (bool) $project->is_archived,
                 'last_session_at' => $lastSessionAt ? $lastSessionAt->toIso8601String() : null,
             ];
         });
@@ -123,7 +123,7 @@ class ProjectController extends Controller
             'color' => $data['color'],
             'client_name' => $data['client_name'] ?? null,
             'budget_hours' => $data['budget_hours'] ?? null,
-            'archived' => $data['archived'] ?? false,
+            'is_archived' => $data['is_archived'] ?? false,
         ]);
 
         return response()->json([
@@ -148,7 +148,7 @@ class ProjectController extends Controller
             'client_name' => ['sometimes', 'nullable', 'string', 'max:100'],
             'budget_hours' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'category_id' => ['sometimes', 'nullable', 'integer', 'exists:categories,id'],
-            'archived' => ['sometimes', 'boolean'],
+            'is_archived' => ['sometimes', 'boolean'],
         ]);
 
         if (array_key_exists('category_id', $data) && $data['category_id'] !== null) {
@@ -184,7 +184,7 @@ class ProjectController extends Controller
             ->firstOrFail();
 
         $existing->forceFill([
-            'archived' => true,
+            'is_archived' => true,
         ])->save();
 
         return response()->json([

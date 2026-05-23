@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Project;
 use App\Models\TimetableBlock;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -13,17 +12,16 @@ class TimetableController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $active = $request->query('active');
 
-        $query = TimetableBlock::query()->where('user_id', $user->id);
-
-        if ($active !== null) {
-            $query->where('active', filter_var($active, FILTER_VALIDATE_BOOLEAN));
-        }
+        $blocks = TimetableBlock::query()
+            ->where('user_id', $user->id)
+            ->orderBy('day_of_week')
+            ->orderBy('start_time')
+            ->get();
 
         return response()->json([
             'success' => true,
-            'data' => $query->orderBy('start_time')->get(),
+            'data' => $blocks,
         ]);
     }
 
@@ -35,12 +33,7 @@ class TimetableController extends Controller
 
         $blocks = TimetableBlock::query()
             ->where('user_id', $user->id)
-            ->where('active', true)
-            ->whereJsonContains('days_of_week', $day)
-            ->where(function ($query) use ($date) {
-                $query->whereNull('semester_end')
-                    ->orWhere('semester_end', '>=', $date->toDateString());
-            })
+            ->where('day_of_week', $day)
             ->orderBy('start_time')
             ->get();
 
@@ -55,15 +48,12 @@ class TimetableController extends Controller
         $user = $request->user();
         $data = $request->validate([
             'title' => ['required', 'string', 'max:100'],
-            'type' => ['required', 'in:class,study,break,personal,other'],
+            'type' => ['required', 'string', 'max:50'],
             'color' => ['required', 'string', 'size:7'],
-            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
-            'days_of_week' => ['required', 'array', 'min:1'],
-            'days_of_week.*' => ['integer', 'min:1', 'max:7'],
+            'day_of_week' => ['required', 'integer', 'min:1', 'max:7'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
-            'active' => ['nullable', 'boolean'],
-            'semester_end' => ['nullable', 'date'],
+            'is_recurring' => ['nullable', 'boolean'],
         ]);
 
         if ($data['start_time'] >= $data['end_time']) {
@@ -73,21 +63,7 @@ class TimetableController extends Controller
             ], 422);
         }
 
-        if (array_key_exists('project_id', $data) && $data['project_id'] !== null) {
-            $ownsProject = Project::query()
-                ->where('id', $data['project_id'])
-                ->where('user_id', $user->id)
-                ->exists();
-
-            if (! $ownsProject) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Project not found.',
-                ], 422);
-            }
-        }
-
-        if ($this->hasConflict($user->id, $data['days_of_week'], $data['start_time'], $data['end_time'])) {
+        if ($this->hasConflict($user->id, $data['day_of_week'], $data['start_time'], $data['end_time'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Timetable block conflicts with existing schedule.',
@@ -99,12 +75,10 @@ class TimetableController extends Controller
             'title' => $data['title'],
             'type' => $data['type'],
             'color' => $data['color'],
-            'project_id' => $data['project_id'] ?? null,
-            'days_of_week' => $data['days_of_week'],
+            'day_of_week' => $data['day_of_week'],
             'start_time' => $data['start_time'],
             'end_time' => $data['end_time'],
-            'active' => $data['active'] ?? true,
-            'semester_end' => $data['semester_end'] ?? null,
+            'is_recurring' => $data['is_recurring'] ?? true,
         ]);
 
         return response()->json([
@@ -125,20 +99,17 @@ class TimetableController extends Controller
 
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:100'],
-            'type' => ['sometimes', 'in:class,study,break,personal,other'],
+            'type' => ['sometimes', 'string', 'max:50'],
             'color' => ['sometimes', 'string', 'size:7'],
-            'project_id' => ['sometimes', 'nullable', 'integer', 'exists:projects,id'],
-            'days_of_week' => ['sometimes', 'array', 'min:1'],
-            'days_of_week.*' => ['integer', 'min:1', 'max:7'],
+            'day_of_week' => ['sometimes', 'integer', 'min:1', 'max:7'],
             'start_time' => ['sometimes', 'date_format:H:i'],
             'end_time' => ['sometimes', 'date_format:H:i'],
-            'active' => ['sometimes', 'boolean'],
-            'semester_end' => ['sometimes', 'nullable', 'date'],
+            'is_recurring' => ['sometimes', 'boolean'],
         ]);
 
         $startTime = $data['start_time'] ?? $existing->start_time;
         $endTime = $data['end_time'] ?? $existing->end_time;
-        $days = $data['days_of_week'] ?? $existing->days_of_week;
+        $day = $data['day_of_week'] ?? $existing->day_of_week;
 
         if ($startTime >= $endTime) {
             return response()->json([
@@ -147,21 +118,7 @@ class TimetableController extends Controller
             ], 422);
         }
 
-        if (array_key_exists('project_id', $data) && $data['project_id'] !== null) {
-            $ownsProject = Project::query()
-                ->where('id', $data['project_id'])
-                ->where('user_id', $user->id)
-                ->exists();
-
-            if (! $ownsProject) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Project not found.',
-                ], 422);
-            }
-        }
-
-        if ($this->hasConflict($user->id, $days, $startTime, $endTime, $existing->id)) {
+        if ($this->hasConflict($user->id, $day, $startTime, $endTime, $existing->id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Timetable block conflicts with existing schedule.',
@@ -186,37 +143,25 @@ class TimetableController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
-        $existing->forceFill([
-            'active' => false,
-        ])->save();
+        $existing->delete();
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'block' => $existing,
-            ],
         ]);
     }
 
-    private function hasConflict(int $userId, array $days, string $startTime, string $endTime, ?int $ignoreId = null): bool
+    private function hasConflict(int $userId, int $day, string $startTime, string $endTime, ?int $ignoreId = null): bool
     {
-        foreach ($days as $day) {
-            $query = TimetableBlock::query()
-                ->where('user_id', $userId)
-                ->where('active', true)
-                ->whereJsonContains('days_of_week', $day)
-                ->where('start_time', '<', $endTime)
-                ->where('end_time', '>', $startTime);
+        $query = TimetableBlock::query()
+            ->where('user_id', $userId)
+            ->where('day_of_week', $day)
+            ->where('start_time', '<', $endTime)
+            ->where('end_time', '>', $startTime);
 
-            if ($ignoreId) {
-                $query->where('id', '!=', $ignoreId);
-            }
-
-            if ($query->exists()) {
-                return true;
-            }
+        if ($ignoreId) {
+            $query->where('id', '!=', $ignoreId);
         }
 
-        return false;
+        return $query->exists();
     }
 }

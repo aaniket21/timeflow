@@ -14,13 +14,13 @@ class TimeSessionsTableTest extends TestCase
             'id',
             'user_id',
             'project_id',
-            'category_id',
             'started_at',
             'ended_at',
             'duration_seconds',
             'notes',
+            'label',
+            'label_type',
             'is_pomodoro',
-            'type',
             'created_at',
         ]));
     }

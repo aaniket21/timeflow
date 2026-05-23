@@ -1,0 +1,50 @@
+# Production Dockerfile — TimeFlow V2
+# Uses Swoole for Octane in production (RoadRunner used locally on Windows)
+FROM php:8.3-cli AS base
+
+RUN apt-get update && apt-get install -y \
+    git curl zip unzip libpng-dev libjpeg-dev libfreetype6-dev \
+    libonig-dev libxml2-dev libzip-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip sockets \
+    && pecl install redis swoole && docker-php-ext-enable redis swoole \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# --- Build stage ---
+FROM base AS build
+
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+WORKDIR /var/www/html
+
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+COPY package.json package-lock.json ./
+RUN npm ci --production=false
+
+COPY . .
+RUN npm run build
+RUN composer run-script post-autoload-dump
+RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
+
+# --- Production stage ---
+FROM base AS production
+
+WORKDIR /var/www/html
+
+COPY --from=build /var/www/html /var/www/html
+
+# Create storage directories
+RUN mkdir -p storage/framework/{cache,sessions,views,testing} \
+    && mkdir -p storage/logs \
+    && mkdir -p bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+EXPOSE 8000
+
+# Run with Octane Swoole in production
+CMD ["php", "artisan", "octane:start", "--server=swoole", "--host=0.0.0.0", "--port=8000", "--workers=auto", "--task-workers=auto"]

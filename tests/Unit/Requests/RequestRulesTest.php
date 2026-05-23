@@ -14,7 +14,7 @@ class RequestRulesTest extends TestCase
         $rules = (new StartSessionRequest())->rules();
 
         $this->assertArrayHasKey('project_id', $rules);
-        $this->assertContains('required', $this->normalizeRules($rules['project_id']));
+        $this->assertContains('nullable', $this->normalizeRules($rules['project_id']));
     }
 
     public function test_create_project_request_rules(): void

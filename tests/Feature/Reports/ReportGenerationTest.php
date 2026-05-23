@@ -36,7 +36,7 @@ class ReportGenerationTest extends TestCase
             'format' => 'csv',
         ];
 
-        $response = $this->postJson('/api/reports/generate', $payload);
+        $response = $this->postJson('/api/reports', $payload);
 
         $response->assertCreated()
             ->assertJsonPath('data.report.title', 'Weekly CSV')

@@ -2,6 +2,9 @@
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import { useTime } from '../composables/useTime';
+
+const time = useTime();
 
 const props = defineProps({
   navigation: {
@@ -11,12 +14,12 @@ const props = defineProps({
 });
 
 const tasks = ref([]);
-const planDate = ref(new Date());
+const planDate = ref(time.now());
 const isSaving = ref(false);
 
 const hasTasks = computed(() => tasks.value.length > 0);
 const dateLabel = computed(() =>
-  planDate.value.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+  time.format(planDate.value, 'ddd, MMM D'),
 );
 
 const loadPlan = async () => {
@@ -68,10 +71,7 @@ onMounted(() => {
 });
 
 const formatDateInput = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return time.parse(date).format('YYYY-MM-DD');
 };
 </script>
 

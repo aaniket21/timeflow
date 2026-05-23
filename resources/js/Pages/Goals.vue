@@ -3,6 +3,9 @@ import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 import ModalBase from '../Components/ModalBase.vue';
+import { useTime } from '../composables/useTime';
+
+const { daysUntil, formatDate } = useTime();
 
 const props = defineProps({
   navigation: {
@@ -36,7 +39,7 @@ const loadExams = async () => {
     const response = await axios.get('/api/exams');
     if (Array.isArray(response.data?.data)) {
       exams.value = response.data.data.map((exam) => {
-        const daysRemaining = Math.max(0, Math.ceil((new Date(exam.exam_date) - new Date()) / 86400000));
+        const daysRemaining = daysUntil(exam.exam_date);
         const urgency = daysRemaining <= 7 ? 'var(--tf-red)' : daysRemaining <= 14 ? 'var(--tf-amber)' : 'var(--tf-sky)';
         return {
           id: exam.id,
@@ -74,8 +77,7 @@ const formatGoalTarget = (type, value) => {
 };
 
 const formatExamDate = (dateString) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return formatDate(dateString, 'MMM D');
 };
 
 const createGoal = async () => {

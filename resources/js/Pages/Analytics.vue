@@ -2,6 +2,9 @@
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import { useTime } from '../composables/useTime';
+
+const time = useTime();
 
 const props = defineProps({
   navigation: {
@@ -13,9 +16,9 @@ const props = defineProps({
 const tab = ref('daily');
 const userProfile = ref({ daily_goal_hours: 6 });
 
-const dailyDate = ref(new Date());
-const weeklyStartDate = ref(startOfWeek(new Date()));
-const monthlyDate = ref(new Date());
+const dailyDate = ref(time.now());
+const weeklyStartDate = ref(time.startOfWeek());
+const monthlyDate = ref(time.now());
 
 const dailySummary = ref({
   total_seconds: 0,
@@ -259,7 +262,7 @@ const loadDaily = async () => {
         name: session.label,
         category: session.category,
         color: session.color,
-        time: formatTime(session.started_at),
+        time: formatTimeLabel(session.started_at),
         duration: formatDuration(session.duration_seconds),
       }))
       : [];
@@ -355,65 +358,50 @@ onMounted(() => {
 });
 
 function startOfWeek(date) {
-  const base = new Date(date);
-  const day = base.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  base.setDate(base.getDate() + diff);
-  base.setHours(0, 0, 0, 0);
-  return base;
+  return time.startOfWeek(date);
 }
 
 function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+  return time.parse(date).add(days, 'day');
 }
 
 function addMonths(date, months) {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() + months);
-  return next;
+  return time.parse(date).add(months, 'month');
 }
 
 function daysInMonth(date) {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  return time.daysInMonth(date);
 }
 
 function formatDateInput(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return time.parse(date).format('YYYY-MM-DD');
 }
 
 function formatMonthInput(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
+  return time.parse(date).format('YYYY-MM');
 }
 
 function formatDateLabel(date) {
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return time.format(date, 'ddd, MMM D');
 }
 
 function formatRangeLabel(start, end) {
-  const startLabel = new Date(start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const endLabel = new Date(end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const startLabel = time.formatDate(start, 'MMM D');
+  const endLabel = time.formatDate(end, 'MMM D');
   return `${startLabel} - ${endLabel}`;
 }
 
 function formatMonthLabel(month) {
-  const date = new Date(`${month}-01T00:00:00`);
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return time.parse(`${month}-01`).format('MMMM YYYY');
 }
 
 function formatDayLabel(dateString) {
-  return new Date(dateString).toLocaleDateString('en-US', { weekday: 'short' });
+  return time.format(dateString, 'ddd');
 }
 
-function formatTime(isoString) {
+function formatTimeLabel(isoString) {
   if (!isoString) return '--';
-  return new Date(isoString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return time.formatTime(isoString);
 }
 
 function formatHours(seconds) {

@@ -3,6 +3,9 @@ import axios from 'axios';
 import { computed, onMounted, ref, watch } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 import ModalBase from '../Components/ModalBase.vue';
+import { useTime } from '../composables/useTime';
+
+const { relative, toTimestamp } = useTime();
 
 const props = defineProps({
   navigation: {
@@ -100,11 +103,7 @@ const deleteProject = async (id) => {
 
 const formatLastSession = (isoString) => {
   if (!isoString) return 'No sessions yet';
-  const date = new Date(isoString);
-  const diffDays = Math.floor((Date.now() - date.getTime()) / 86400000);
-  if (diffDays <= 0) return 'Last session today';
-  if (diffDays === 1) return 'Last session yesterday';
-  return `Last session ${diffDays} days ago`;
+  return `Last session ${relative(isoString)}`;
 };
 
 const activeSession = ref(null);
@@ -118,7 +117,7 @@ const loadActiveSession = async () => {
       const session = res.data.data.session;
       activeSession.value = {
         project_id: session.project_id,
-        started_at: new Date(session.started_at).getTime()
+        started_at: toTimestamp(session.started_at)
       };
     }
   } catch (e) {

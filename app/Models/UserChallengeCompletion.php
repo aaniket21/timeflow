@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserChallengeCompletion extends Model
 {
@@ -11,17 +12,28 @@ class UserChallengeCompletion extends Model
 
     public $timestamps = false;
 
+    const UPDATED_AT = null;
+
     protected $table = 'user_challenge_completions';
 
     protected $fillable = [
         'user_id',
         'challenge_id',
-        'date',
-        'completed_at',
+        'completed_on',
     ];
 
     protected $casts = [
-        'date' => 'date',
-        'completed_at' => 'datetime',
+        'completed_on' => 'date',
+        'created_at' => 'datetime',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function challenge(): BelongsTo
+    {
+        return $this->belongsTo(DailyChallenge::class, 'challenge_id');
+    }
 }

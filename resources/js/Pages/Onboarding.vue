@@ -1,5 +1,8 @@
 <script setup>
 import { ref } from 'vue';
+import { useTime } from '../composables/useTime';
+
+const { now } = useTime();
 
 const step = ref(1);
 const selectedRole = ref('');
@@ -20,7 +23,7 @@ const completeOnboarding = () => {
     role: selectedRole.value,
     daily_goal_hours: Number(dailyGoal.value || 0),
     first_item: firstItem.value,
-    completed_at: new Date().toISOString(),
+    completed_at: now().toISOString(),
   };
   localStorage.setItem('timeflow_onboarding', JSON.stringify(payload));
   if (import.meta.env?.MODE !== 'test') {
@@ -29,7 +32,7 @@ const completeOnboarding = () => {
 };
 
 const skipOnboarding = () => {
-  localStorage.setItem('timeflow_onboarding', JSON.stringify({ skipped: true, completed_at: new Date().toISOString() }));
+  localStorage.setItem('timeflow_onboarding', JSON.stringify({ skipped: true, completed_at: now().toISOString() }));
   if (import.meta.env?.MODE !== 'test') {
     window.location.assign('/');
   }

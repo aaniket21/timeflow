@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\TimeHelper;
 use App\Models\Category;
 use App\Models\DailyPlan;
 use App\Models\Exam;
 use App\Models\Goal;
 use App\Models\HabitLog;
 use App\Models\Project;
-use App\Models\Report;
+use App\Models\ReportToken;
 use App\Models\TimeSession;
 use App\Models\UserBadge;
 use App\Models\UserChallengeCompletion;
 use App\Models\XpTransaction;
+
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +27,7 @@ class SettingsController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:100'],
             'avatar_url' => ['sometimes', 'nullable', 'string', 'max:500'],
-            'timezone' => ['sometimes', 'string', 'max:50'],
+            'timezone' => ['sometimes', 'string', 'timezone:all'],
         ]);
 
         $user->forceFill($data)->save();
@@ -100,7 +102,7 @@ class SettingsController extends Controller
                 'habit_logs' => HabitLog::query()->where('user_id', $user->id)->get(),
                 'exams' => Exam::query()->where('user_id', $user->id)->get(),
                 'daily_plans' => DailyPlan::query()->where('user_id', $user->id)->get(),
-                'reports' => Report::query()->where('user_id', $user->id)->get(),
+                'reports' => ReportToken::query()->where('user_id', $user->id)->get(),
                 'badges' => UserBadge::query()->where('user_id', $user->id)->get(),
                 'challenges' => UserChallengeCompletion::query()->where('user_id', $user->id)->get(),
                 'xp_transactions' => XpTransaction::query()->where('user_id', $user->id)->get(),
@@ -113,12 +115,14 @@ class SettingsController extends Controller
         $user = $request->user();
 
         DB::transaction(function () use ($user) {
-            $user->forceDelete();
+            $user->delete();
         });
 
-        auth('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if ($request->hasSession()) {
+            auth('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json([
             'success' => true,

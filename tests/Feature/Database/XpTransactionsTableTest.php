@@ -15,7 +15,8 @@ class XpTransactionsTableTest extends TestCase
             'user_id',
             'amount',
             'reason',
-            'meta',
+            'reference_id',
+            'reference_type',
             'created_at',
         ]));
     }

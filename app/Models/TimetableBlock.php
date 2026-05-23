@@ -4,12 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TimetableBlock extends Model
 {
     use HasFactory;
-
-    public $timestamps = false;
 
     protected $table = 'timetable_blocks';
 
@@ -17,18 +16,20 @@ class TimetableBlock extends Model
         'user_id',
         'title',
         'type',
-        'color',
-        'project_id',
-        'days_of_week',
+        'day_of_week',
         'start_time',
         'end_time',
-        'active',
-        'semester_end',
+        'color',
+        'is_recurring',
     ];
 
     protected $casts = [
-        'days_of_week' => 'array',
-        'active' => 'boolean',
-        'semester_end' => 'date',
+        'day_of_week' => 'integer',
+        'is_recurring' => 'boolean',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

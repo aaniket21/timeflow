@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Timer;
 
+use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -9,7 +10,9 @@ class TimerPageTest extends TestCase
 {
     public function test_timer_page_renders(): void
     {
-        $response = $this->get('/timer');
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/timer');
 
         $response->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Timer'));
@@ -17,7 +20,9 @@ class TimerPageTest extends TestCase
 
     public function test_timer_page_includes_navigation_sections(): void
     {
-        $response = $this->get('/timer');
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/timer');
 
         $response->assertInertia(function (Assert $page) {
             $page->component('Timer')

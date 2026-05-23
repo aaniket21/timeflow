@@ -19,10 +19,12 @@ const submitLogin = async () => {
 
   isSubmitting.value = true;
   try {
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     await axios.get('/sanctum/csrf-cookie');
     await axios.post('/login', {
       email: form.value.email,
       password: form.value.password,
+      timezone: detectedTimezone,
     });
     if (import.meta.env?.MODE !== 'test') {
       window.location.assign('/dashboard');

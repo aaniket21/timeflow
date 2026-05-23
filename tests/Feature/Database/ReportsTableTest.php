@@ -9,16 +9,17 @@ class ReportsTableTest extends TestCase
 {
     public function test_reports_table_has_expected_columns(): void
     {
-        $this->assertTrue(Schema::hasTable('reports'));
-        $this->assertTrue(Schema::hasColumns('reports', [
+        $this->assertTrue(Schema::hasTable('report_tokens'));
+        $this->assertTrue(Schema::hasColumns('report_tokens', [
             'id',
             'user_id',
             'title',
             'date_from',
             'date_to',
-            'project_ids',
+            'status',
+            'token',
             'file_path',
-            'share_token',
+            'expires_at',
             'created_at',
         ]));
     }

@@ -20,7 +20,6 @@ class InsightsTest extends TestCase
             'started_at' => now()->subMinutes(20),
             'ended_at' => now()->subMinutes(10),
             'duration_seconds' => 600,
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);

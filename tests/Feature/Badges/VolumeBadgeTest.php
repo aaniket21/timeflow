@@ -19,8 +19,8 @@ class VolumeBadgeTest extends TestCase
             'name' => 'First Hour',
             'description' => 'Log first hour',
             'icon' => 'clock',
-            'category' => 'volume',
-            'xp_reward' => 0,
+            'condition_type' => 'total_hours',
+            'condition_value' => 1,
         ]);
 
         $user = User::factory()->create();
@@ -30,7 +30,6 @@ class VolumeBadgeTest extends TestCase
             'started_at' => now()->subMinutes(65),
             'ended_at' => null,
             'duration_seconds' => null,
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);

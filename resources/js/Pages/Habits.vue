@@ -3,6 +3,9 @@ import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 import ModalBase from '../Components/ModalBase.vue';
+import { useTime } from '../composables/useTime';
+
+const time = useTime();
 
 const props = defineProps({
   navigation: {
@@ -13,7 +16,7 @@ const props = defineProps({
 
 const palette = ['var(--tf-violet)', 'var(--tf-mint)', 'var(--tf-rose)', 'var(--tf-amber)', 'var(--tf-sky)', 'var(--tf-red)'];
 
-const startDate = ref(startOfWeek(new Date()));
+const startDate = ref(time.startOfWeek());
 const habits = ref([]);
 const stats = ref({ checks_total: 0, active_habits: 0, longest_streak: 0 });
 const showHabitModal = ref(false);
@@ -21,10 +24,10 @@ const habitForm = ref({ title: '', frequency: 'daily' });
 
 const days = computed(() => {
   const labels = [];
-  const cursor = new Date(startDate.value);
+  let cursor = time.parse(startDate.value);
   for (let i = 0; i < 7; i += 1) {
-    labels.push(cursor.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1));
-    cursor.setDate(cursor.getDate() + 1);
+    labels.push(cursor.format('dd').charAt(0));
+    cursor = cursor.add(1, 'day');
   }
   return labels;
 });
@@ -68,13 +71,9 @@ const toggleCheck = async (habit, dayIndex) => {
   if (pendingToggles.value.has(toggleKey)) return;
   pendingToggles.value.add(toggleKey);
 
-  const cursor = new Date(startDate.value);
-  cursor.setDate(cursor.getDate() + dayIndex);
+  const targetDate = time.parse(startDate.value).add(dayIndex, 'day');
 
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  if (cursor > now && !habit.checks[dayIndex]) {
+  if (time.isFuture(targetDate) && !habit.checks[dayIndex]) {
     if (window.TimeflowToast) window.TimeflowToast.error('Cannot log habits for future days');
     pendingToggles.value.delete(toggleKey);
     return;
@@ -90,7 +89,7 @@ const toggleCheck = async (habit, dayIndex) => {
     stats.value.checks_total = Math.max(0, (stats.value.checks_total || 0) - 1);
   }
 
-  const dateStr = formatDateInput(cursor);
+  const dateStr = time.parse(startDate.value).add(dayIndex, 'day').format('YYYY-MM-DD');
 
   try {
     const res = await axios.post(`/api/habits/${habit.id}/log`, {
@@ -117,19 +116,11 @@ const toggleCheck = async (habit, dayIndex) => {
 };
 
 function startOfWeek(date) {
-  const base = new Date(date);
-  const day = base.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  base.setDate(base.getDate() + diff);
-  base.setHours(0, 0, 0, 0);
-  return base;
+  return time.startOfWeek(date);
 }
 
 function formatDateInput(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return time.parse(date).format('YYYY-MM-DD');
 }
 
 const editHabit = (habit) => {

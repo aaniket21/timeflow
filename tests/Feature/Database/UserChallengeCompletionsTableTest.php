@@ -14,8 +14,8 @@ class UserChallengeCompletionsTableTest extends TestCase
             'id',
             'user_id',
             'challenge_id',
-            'date',
-            'completed_at',
+            'completed_on',
+            'created_at',
         ]));
     }
 }

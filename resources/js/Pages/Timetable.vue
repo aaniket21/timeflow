@@ -3,6 +3,9 @@ import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 import ModalBase from '../Components/ModalBase.vue';
+import { useTime } from '../composables/useTime';
+
+const time = useTime();
 
 const props = defineProps({
   navigation: {
@@ -52,10 +55,9 @@ const displayBlocks = computed(() => {
 });
 
 const weekLabel = computed(() => {
-  const now = new Date();
-  const start = startOfWeek(now);
-  const end = addDays(start, 6);
-  return `${formatDateLabel(start)} - ${formatDateLabel(end)}`;
+  const start = time.startOfWeek();
+  const end = start.add(6, 'day');
+  return `${start.format('MMM D')} - ${end.format('MMM D')}`;
 });
 
 const loadBlocks = async () => {
@@ -92,22 +94,15 @@ function parseTime(value) {
 }
 
 function startOfWeek(date) {
-  const base = new Date(date);
-  const day = base.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  base.setDate(base.getDate() + diff);
-  base.setHours(0, 0, 0, 0);
-  return base;
+  return time.startOfWeek(date);
 }
 
 function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+  return time.parse(date).add(days, 'day');
 }
 
 function formatDateLabel(date) {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return time.formatDate(date, 'MMM D');
 }
 
 const prevWeek = () => {
@@ -120,7 +115,7 @@ const nextWeek = () => {
   loadBlocks();
 };
 
-const startDate = ref(startOfWeek(new Date()));
+const startDate = ref(time.startOfWeek());
 
 const createBlock = async () => {
   try {

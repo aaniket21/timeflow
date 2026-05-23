@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\TimeHelper;
 use App\Models\Goal;
 use App\Models\HabitLog;
 use App\Models\TimeSession;
@@ -25,7 +26,7 @@ class GoalController extends Controller
         }
 
         if ($active !== null) {
-            $query->where('active', filter_var($active, FILTER_VALIDATE_BOOLEAN));
+            $query->where('is_active', filter_var($active, FILTER_VALIDATE_BOOLEAN));
         }
 
         return response()->json([
@@ -34,18 +35,22 @@ class GoalController extends Controller
         ]);
     }
 
+    /**
+     * PRD §6 — Summary uses TimeHelper for timezone-aware date and UTC bounds.
+     */
     public function summary(Request $request): JsonResponse
     {
         $user = $request->user();
-        $date = Carbon::parse($request->query('date', now()->toDateString()));
-        $dateString = $date->toDateString();
-        $weekStart = $date->copy()->startOfWeek();
-        $weekEnd = $date->copy()->endOfWeek();
+
+        // PRD §6 — Use timezone-aware "today" as default
+        $dateString = $request->query('date', TimeHelper::todayForUser($user));
+        [$dayStart, $dayEnd] = TimeHelper::dateBoundsUtc($user, $dateString);
+        [$weekStart, $weekEnd] = TimeHelper::weekBoundsUtc($user, $dateString);
 
         $dailySeconds = (int) TimeSession::query()
             ->where('user_id', $user->id)
             ->whereNotNull('ended_at')
-            ->whereDate('started_at', $dateString)
+            ->whereBetween('started_at', [$dayStart, $dayEnd])
             ->sum('duration_seconds');
 
         $weeklySeconds = (int) TimeSession::query()
@@ -54,9 +59,13 @@ class GoalController extends Controller
             ->whereBetween('started_at', [$weekStart, $weekEnd])
             ->sum('duration_seconds');
 
+        $tz = $user->timezone ?? 'UTC';
+        $weekStartDate = Carbon::parse($dateString, $tz)->startOfWeek()->toDateString();
+        $weekEndDate = Carbon::parse($dateString, $tz)->endOfWeek()->toDateString();
+
         $goals = Goal::query()
             ->where('user_id', $user->id)
-            ->where('active', true)
+            ->where('is_active', true)
             ->whereIn('type', ['daily_hours', 'weekly_hours', 'focus_hours'])
             ->orderByDesc('created_at')
             ->get();
@@ -82,24 +91,34 @@ class GoalController extends Controller
             'success' => true,
             'data' => [
                 'date' => $dateString,
-                'week_start' => $weekStart->toDateString(),
-                'week_end' => $weekEnd->toDateString(),
+                'week_start' => $weekStartDate,
+                'week_end' => $weekEndDate,
                 'goals' => $data,
             ],
         ]);
     }
 
+    /**
+     * PRD §6 — weekHabits uses TimeHelper for timezone-aware week start.
+     */
     public function weekHabits(Request $request): JsonResponse
     {
         $user = $request->user();
-        $start = Carbon::parse($request->query('start', now()->startOfWeek()->toDateString()))->startOfDay();
+        $tz = $user->timezone ?? 'UTC';
+
+        // PRD §6 — Default start is timezone-aware start of week
+        $startInput = $request->query('start');
+        $start = $startInput
+            ? Carbon::parse($startInput, $tz)->startOfDay()
+            : Carbon::now($tz)->startOfWeek()->startOfDay();
         $end = $start->copy()->addDays(6)->endOfDay();
-        $streakDate = Carbon::parse($request->query('date', now()->toDateString()))->toDateString();
+
+        $streakDate = $request->query('date', TimeHelper::todayForUser($user));
 
         $habits = Goal::query()
             ->where('user_id', $user->id)
             ->where('type', 'habit')
-            ->where('active', true)
+            ->where('is_active', true)
             ->orderBy('created_at')
             ->get();
 
@@ -161,22 +180,27 @@ class GoalController extends Controller
         ]);
     }
 
+    /**
+     * PRD §6 — todayHabits uses TimeHelper::todayForUser() as default date.
+     */
     public function todayHabits(Request $request): JsonResponse
     {
         $user = $request->user();
-        $date = Carbon::parse($request->query('date', now()->toDateString()))->toDateString();
+
+        // PRD §6 — Use timezone-aware "today" as default
+        $date = $request->query('date', TimeHelper::todayForUser($user));
 
         $habits = Goal::query()
             ->where('user_id', $user->id)
             ->where('type', 'habit')
-            ->where('active', true)
+            ->where('is_active', true)
             ->orderBy('created_at')
             ->get();
 
         $logs = HabitLog::query()
             ->where('user_id', $user->id)
             ->whereIn('goal_id', $habits->pluck('id'))
-                ->whereDate('date', $date)
+            ->where('date', $date)
             ->get()
             ->keyBy('goal_id');
 
@@ -220,7 +244,7 @@ class GoalController extends Controller
             $habitCount = Goal::query()
                 ->where('user_id', $user->id)
                 ->where('type', 'habit')
-                ->where('active', true)
+                ->where('is_active', true)
                 ->count();
 
             if ($habitCount >= 6) {
@@ -236,7 +260,7 @@ class GoalController extends Controller
             'type' => $data['type'],
             'title' => $data['title'],
             'target_value' => $data['target_value'],
-            'active' => $isActive,
+            'is_active' => $isActive,
             'reminder_time' => $data['reminder_time'] ?? null,
         ]);
 
@@ -247,6 +271,7 @@ class GoalController extends Controller
             ],
         ], 201);
     }
+
     public function update(Request $request, int $goal): JsonResponse
     {
         $user = $request->user();
@@ -261,7 +286,18 @@ class GoalController extends Controller
             'active' => ['sometimes', 'boolean'],
         ]);
 
-        $existing->update($data);
+        $updates = [];
+        if (array_key_exists('title', $data)) {
+            $updates['title'] = $data['title'];
+        }
+        if (array_key_exists('target_value', $data)) {
+            $updates['target_value'] = $data['target_value'];
+        }
+        if (array_key_exists('active', $data)) {
+            $updates['is_active'] = $data['active'];
+        }
+
+        $existing->update($updates);
 
         return response()->json([
             'success' => true,
@@ -279,7 +315,7 @@ class GoalController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
-        $existing->forceFill(['active' => false])->save();
+        $existing->forceFill(['is_active' => false])->save();
 
         return response()->json([
             'success' => true,
@@ -289,6 +325,9 @@ class GoalController extends Controller
         ]);
     }
 
+    /**
+     * PRD §6 — logHabit uses TimeHelper::todayForUser() as default date.
+     */
     public function logHabit(Request $request, int $goal): JsonResponse
     {
         $user = $request->user();
@@ -309,12 +348,15 @@ class GoalController extends Controller
             'done' => ['nullable', 'boolean'],
         ]);
 
-        $date = Carbon::parse($data['date'] ?? now())->toDateString();
+        // PRD §6 — Default to timezone-aware "today"
+        $date = isset($data['date'])
+            ? Carbon::parse($data['date'])->toDateString()
+            : TimeHelper::todayForUser($user);
 
         $log = HabitLog::query()
             ->where('user_id', $user->id)
             ->where('goal_id', $habit->id)
-            ->whereDate('date', $date)
+            ->where('date', $date)
             ->first();
 
         if (!$log) {
@@ -336,7 +378,7 @@ class GoalController extends Controller
                 $log = HabitLog::query()
                     ->where('user_id', $user->id)
                     ->where('goal_id', $habit->id)
-                    ->whereDate('date', $date)
+                    ->where('date', $date)
                     ->firstOrFail();
                     
                 $previousDone = (bool) $log->done;
@@ -351,16 +393,11 @@ class GoalController extends Controller
         $newLevel = null;
 
         if ($done && ! $previousDone && ! $this->hasHabitXp($user->id, $habit->id, $date, 'habit_complete')) {
-            $xpGained += $this->grantXp($user->id, 5, 'habit_complete', [
-                'goal_id' => $habit->id,
-                'date' => $date,
-            ]);
+            $xpGained += $this->grantXp($user->id, 5, 'habit_complete', $habit->id, "date:{$date}");
         }
 
         if ($done && $this->allHabitsCompleted($user->id, $date) && ! $this->hasDailyXp($user->id, 'habit_full_day', $date)) {
-            $xpGained += $this->grantXp($user->id, 20, 'habit_full_day', [
-                'date' => $date,
-            ]);
+            $xpGained += $this->grantXp($user->id, 20, 'habit_full_day', null, "date:{$date}");
         }
 
         if ($xpGained > 0) {
@@ -397,7 +434,10 @@ class GoalController extends Controller
         ]);
     }
 
-    private function grantXp(int $userId, int $amount, string $reason, array $meta = []): int
+    /**
+     * V2: XP transactions use reference_id/reference_type instead of meta JSON.
+     */
+    private function grantXp(int $userId, int $amount, string $reason, ?int $referenceId = null, ?string $referenceType = null): int
     {
         if ($amount <= 0) {
             return 0;
@@ -407,7 +447,8 @@ class GoalController extends Controller
             'user_id' => $userId,
             'amount' => $amount,
             'reason' => $reason,
-            'meta' => $meta,
+            'reference_id' => $referenceId,
+            'reference_type' => $referenceType,
         ]);
 
         return $amount;
@@ -418,8 +459,8 @@ class GoalController extends Controller
         return XpTransaction::query()
             ->where('user_id', $userId)
             ->where('reason', $reason)
-            ->where('meta->goal_id', $goalId)
-            ->where('meta->date', $date)
+            ->where('reference_id', $goalId)
+            ->where('reference_type', "date:{$date}")
             ->exists();
     }
 
@@ -428,7 +469,7 @@ class GoalController extends Controller
         return XpTransaction::query()
             ->where('user_id', $userId)
             ->where('reason', $reason)
-            ->where('meta->date', $date)
+            ->where('reference_type', "date:{$date}")
             ->exists();
     }
 
@@ -437,7 +478,7 @@ class GoalController extends Controller
         $habitGoals = Goal::query()
             ->where('user_id', $userId)
             ->where('type', 'habit')
-            ->where('active', true)
+            ->where('is_active', true)
             ->pluck('id');
 
         if ($habitGoals->isEmpty()) {
@@ -463,7 +504,7 @@ class GoalController extends Controller
             $done = HabitLog::query()
                 ->where('user_id', $userId)
                 ->where('goal_id', $goalId)
-                    ->whereDate('date', $cursor->toDateString())
+                ->where('date', $cursor->toDateString())
                 ->where('done', true)
                 ->exists();
 

@@ -2,6 +2,9 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { onMounted, ref } from 'vue';
+import { useTime } from '../composables/useTime';
+
+const { dayOfWeekIndex, formatTime } = useTime();
 
 const props = defineProps({
   navigation: {
@@ -17,7 +20,7 @@ const userInitials = ref('TF');
 const notifications = ref(0);
 const notifOpen = ref(false);
 const notifList = ref([]);
-const todayDayIndex = ref(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+const todayDayIndex = ref(dayOfWeekIndex());
 
 const routeMap = {
   Dashboard: '/dashboard',
@@ -78,7 +81,7 @@ const toggleNotif = async () => {
         notifList.value = res.data.data.map((n) => ({
           id: n.id,
           message: n.message || n.data?.message || 'New notification',
-          time: n.created_at ? new Date(n.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+          time: n.created_at ? formatTime(n.created_at) : '',
           read: Boolean(n.read_at),
         }));
       }

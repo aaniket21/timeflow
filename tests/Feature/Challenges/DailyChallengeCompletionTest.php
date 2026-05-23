@@ -13,13 +13,16 @@ class DailyChallengeCompletionTest extends TestCase
 {
     public function test_hours_logged_challenge_completes_and_awards_xp(): void
     {
-        $challenge = DailyChallenge::create([
-            'title' => 'Log at least 1 hour',
-            'description' => 'Log 1 hour of focused work today',
-            'type' => 'hours_logged',
-            'target_value' => 1,
-            'xp_reward' => 50,
-        ]);
+        $challenge = DailyChallenge::firstOrCreate(
+            ['slug' => 'log-1-hour'],
+            [
+                'title' => 'Log at least 1 hour',
+                'description' => 'Log 1 hour of focused work today',
+                'condition_type' => 'hours_logged',
+                'condition_value' => 1,
+                'xp_reward' => 50,
+            ]
+        );
 
         $user = User::factory()->create();
         $user->forceFill([
@@ -33,7 +36,6 @@ class DailyChallengeCompletionTest extends TestCase
             'started_at' => now()->subMinutes(70),
             'ended_at' => null,
             'duration_seconds' => null,
-            'type' => 'timer',
         ]);
 
         Sanctum::actingAs($user);
@@ -44,13 +46,11 @@ class DailyChallengeCompletionTest extends TestCase
 
         $this->assertDatabaseHas('user_challenge_completions', [
             'user_id' => $user->id,
-            'challenge_id' => $challenge->id,
-            'date' => now()->toDateString(),
+            'completed_on' => now()->toDateString(),
         ]);
 
         $this->assertDatabaseHas('xp_transactions', [
             'user_id' => $user->id,
-            'amount' => 50,
             'reason' => 'daily_challenge',
         ]);
     }

@@ -29,7 +29,6 @@ class CategoryController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:80'],
             'color' => ['required', 'string', 'size:7'],
-            'icon' => ['nullable', 'string', 'max:50'],
             'parent_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 
@@ -51,9 +50,7 @@ class CategoryController extends Controller
             'user_id' => $user->id,
             'name' => $data['name'],
             'color' => $data['color'],
-            'icon' => $data['icon'] ?? null,
             'parent_id' => $data['parent_id'] ?? null,
-            'archived' => false,
         ]);
 
         return response()->json([
@@ -75,9 +72,7 @@ class CategoryController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:80'],
             'color' => ['sometimes', 'string', 'size:7'],
-            'icon' => ['sometimes', 'nullable', 'string', 'max:50'],
             'parent_id' => ['sometimes', 'nullable', 'integer', 'exists:categories,id'],
-            'archived' => ['sometimes', 'boolean'],
         ]);
 
         if (array_key_exists('parent_id', $data) && $data['parent_id'] !== null) {
@@ -112,15 +107,10 @@ class CategoryController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
-        $existing->forceFill([
-            'archived' => true,
-        ])->save();
+        $existing->delete();
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'category' => $existing,
-            ],
         ]);
     }
 }

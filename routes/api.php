@@ -19,9 +19,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-use App\Http\Middleware\EnsureTimezoneIsSet;
+use App\Http\Middleware\SetUserTimezone;
 
-Route::middleware(['auth:sanctum', EnsureTimezoneIsSet::class])->group(function () {
+Route::middleware(['auth:sanctum', SetUserTimezone::class])->group(function () {
     Route::get('/analytics/daily', [AnalyticsController::class, 'daily']);
     Route::get('/analytics/weekly', [AnalyticsController::class, 'weekly']);
     Route::get('/analytics/monthly', [AnalyticsController::class, 'monthly']);

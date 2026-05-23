@@ -19,7 +19,7 @@ class ProjectFactory extends Factory
             'color' => '#'.ltrim($this->faker->hexColor(), '#'),
             'client_name' => $this->faker->boolean(30) ? $this->faker->name() : null,
             'budget_hours' => $this->faker->boolean(40) ? $this->faker->randomFloat(2, 1, 40) : null,
-            'archived' => false,
+            'is_archived' => false,
             'created_at' => now(),
         ];
     }

@@ -21,7 +21,7 @@ class TimetableBlockTest extends TestCase
             'title' => 'Study block',
             'type' => 'study',
             'color' => '#0EA5E9',
-            'days_of_week' => [$day],
+            'day_of_week' => $day,
             'start_time' => '09:00',
             'end_time' => '10:30',
         ];
@@ -43,7 +43,7 @@ class TimetableBlockTest extends TestCase
         $day = Carbon::now()->dayOfWeekIso;
 
         TimetableBlock::factory()->for($user)->create([
-            'days_of_week' => [$day],
+            'day_of_week' => $day,
             'start_time' => '10:00',
             'end_time' => '11:00',
         ]);
@@ -54,7 +54,7 @@ class TimetableBlockTest extends TestCase
             'title' => 'Overlapping',
             'type' => 'study',
             'color' => '#F97316',
-            'days_of_week' => [$day],
+            'day_of_week' => $day,
             'start_time' => '10:30',
             'end_time' => '11:30',
         ];
@@ -71,14 +71,14 @@ class TimetableBlockTest extends TestCase
 
         TimetableBlock::factory()->for($user)->create([
             'title' => 'Today block',
-            'days_of_week' => [$day],
+            'day_of_week' => $day,
             'start_time' => '08:00',
             'end_time' => '09:00',
         ]);
 
         TimetableBlock::factory()->for($user)->create([
             'title' => 'Other day',
-            'days_of_week' => [$day % 7 + 1],
+            'day_of_week' => $day % 7 + 1,
             'start_time' => '12:00',
             'end_time' => '13:00',
         ]);

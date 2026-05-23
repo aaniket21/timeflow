@@ -2,30 +2,29 @@
 
 namespace App\Models;
 
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends Model
 {
     use HasFactory;
-
-    public $timestamps = false;
 
     protected $fillable = [
         'user_id',
         'category_id',
         'name',
         'color',
+        'icon',
         'client_name',
         'budget_hours',
-        'archived',
+        'is_archived',
     ];
 
     protected $casts = [
-        'budget_hours' => 'float',
-        'archived' => 'boolean',
+        'budget_hours' => 'decimal:2',
+        'is_archived' => 'boolean',
     ];
 
     public function user(): BelongsTo
@@ -36,5 +35,10 @@ class Project extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function timeSessions(): HasMany
+    {
+        return $this->hasMany(TimeSession::class);
     }
 }

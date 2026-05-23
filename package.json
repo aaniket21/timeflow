@@ -10,8 +10,8 @@
         "@tailwindcss/postcss": "^4.3.0",
         "@vue/test-utils": "^2.4.6",
         "autoprefixer": "^10.5.0",
-        "jsdom": "^24.0.0",
         "axios": "^1.6.4",
+        "jsdom": "^24.0.0",
         "laravel-vite-plugin": "^1.0",
         "postcss": "^8.5.14",
         "tailwindcss": "^4.3.0",
@@ -21,6 +21,7 @@
     "dependencies": {
         "@inertiajs/vue3": "^3.1.1",
         "@vitejs/plugin-vue": "^6.0.7",
+        "dayjs": "^1.11.20",
         "vue": "^3.5.34"
     }
 }

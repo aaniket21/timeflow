@@ -13,13 +13,14 @@ class PomodoroBadgeTest extends TestCase
 {
     public function test_first_pomodoro_awards_badge(): void
     {
-        $badge = Badge::create([
+        $badge = Badge::firstOrCreate([
             'slug' => 'tomato_head',
+        ], [
             'name' => 'Tomato Head',
             'description' => 'First Pomodoro',
             'icon' => '🍅',
-            'category' => 'focus',
-            'xp_reward' => 0,
+            'condition_type' => 'pomodoro_count',
+            'condition_value' => 1,
         ]);
 
         $user = User::factory()->create([
@@ -28,7 +29,6 @@ class PomodoroBadgeTest extends TestCase
         $project = Project::factory()->for($user)->create();
         $session = TimeSession::factory()->for($user)->create([
             'project_id' => $project->id,
-            'type' => 'pomodoro',
             'is_pomodoro' => true,
             'started_at' => now()->subMinutes(30),
             'ended_at' => null,

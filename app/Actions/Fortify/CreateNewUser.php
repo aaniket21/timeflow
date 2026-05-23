@@ -29,12 +29,14 @@ class CreateNewUser implements CreatesNewUsers
                 Rule::unique(User::class),
             ],
             'password' => $this->passwordRules(),
+            'timezone' => ['nullable', 'string', 'max:100', 'timezone:all'],
         ])->validate();
 
         return User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => Hash::make($input['password']),
+            'timezone' => $input['timezone'] ?? 'UTC',
         ]);
     }
 }

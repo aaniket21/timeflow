@@ -3,7 +3,7 @@
 namespace Tests\Feature\Policies;
 
 use App\Models\Project;
-use App\Models\Report;
+use App\Models\ReportToken;
 use App\Models\TimeSession;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
@@ -35,7 +35,7 @@ class OwnershipPoliciesTest extends TestCase
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $report = Report::factory()->for($owner)->create();
+        $report = ReportToken::factory()->for($owner)->create();
 
         $this->assertTrue(Gate::forUser($owner)->allows('view', $report));
         $this->assertFalse(Gate::forUser($other)->allows('view', $report));
