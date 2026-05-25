@@ -131,9 +131,18 @@ class SettingsController extends Controller
     {
         $user = $request->user();
 
+        $email = $user->email;
+        $name = $user->name;
+
         DB::transaction(function () use ($user) {
             $user->delete();
         });
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($email)->send(new \App\Mail\AccountDeleted($name));
+        } catch (\Exception $e) {
+            // Log or ignore
+        }
 
         if ($request->hasSession()) {
             auth('web')->logout();

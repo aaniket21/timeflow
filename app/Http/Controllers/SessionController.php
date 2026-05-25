@@ -168,7 +168,7 @@ class SessionController extends Controller
             }
 
             $completion = \App\Models\UserChallengeCompletion::firstOrCreate(
-                ['user_id' => $userId, 'daily_challenge_id' => $challenge->id, 'completed_on' => \Carbon\Carbon::parse($date)->toDateString()],
+                ['user_id' => $userId, 'challenge_id' => $challenge->id, 'completed_on' => \Carbon\Carbon::parse($date)->toDateString()],
             );
 
             if ($completion->wasRecentlyCreated) {
@@ -449,6 +449,44 @@ class SessionController extends Controller
         ]);
 
         $meta = $this->applyGamification($user, $session, $startedAt);
+
+        // If it's a pomodoro session, grant any remaining interval XP
+        if ($session->is_pomodoro && $user->pomodoro_work_min > 0) {
+            $intervals = floor($session->duration_seconds / ($user->pomodoro_work_min * 60));
+            $alreadyAwarded = \App\Models\XpTransaction::query()
+                ->where('user_id', $user->id)
+                ->where('reason', 'pomodoro_complete')
+                ->where('reference_id', $session->id)
+                ->count();
+            
+            $toAward = $intervals - $alreadyAwarded;
+            if ($toAward > 0) {
+                $xpGained = 0;
+                $badgesEarned = $meta['badges_earned'] ?? [];
+                
+                for ($i = 0; $i < $toAward; $i++) {
+                    $xpGained += $this->grantXp($user->id, 10, 'pomodoro_complete', $session->id);
+                }
+                $this->awardBadge($user->id, 'tomato_head', $badgesEarned, $xpGained);
+                
+                $meta['xp_gained'] = ($meta['xp_gained'] ?? 0) + $xpGained;
+                $meta['badges_earned'] = $badgesEarned;
+                
+                $newXpTotal = $user->xp_total + $xpGained;
+                $calculatedLevel = $this->determineLevel($newXpTotal);
+                $newLevel = $calculatedLevel > $user->level ? $calculatedLevel : null;
+                
+                if ($xpGained > 0) {
+                    $user->forceFill([
+                        'xp_total' => $newXpTotal,
+                        'level' => $calculatedLevel,
+                    ])->save();
+                }
+                if ($newLevel) {
+                    $meta['new_level'] = $newLevel;
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,

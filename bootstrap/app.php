@@ -11,7 +11,7 @@ use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Inertia\Inertia;
-use Throwable;
+
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(

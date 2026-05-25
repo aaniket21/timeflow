@@ -37,7 +37,7 @@ class ChallengeController extends Controller
         $completions = UserChallengeCompletion::query()
             ->where('user_id', $user->id)
             ->where('completed_on', $date)
-            ->pluck('daily_challenge_id')
+            ->pluck('challenge_id')
             ->toArray();
 
         $formatted = array_map(function ($challenge) use ($completions) {
