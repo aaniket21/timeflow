@@ -11,6 +11,7 @@ chmod -R 775 /var/www/html/storage
 chmod -R 775 /var/www/html/bootstrap/cache
 
 # Run migrations
+php artisan session:table || true
 php artisan migrate --force
 php artisan db:seed --class=AdminSeeder --force
 
