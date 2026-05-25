@@ -10,7 +10,7 @@ RUN npm run build
 FROM composer:2.7 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs --no-scripts --no-scripts
 
 # Stage 3: Serve Application
 FROM php:8.4-apache
@@ -18,7 +18,7 @@ WORKDIR /var/www/html
 
 # Install system dependencies and PHP extensions
 RUN apt-get update && apt-get install -y \
-    libpng-dev libjpeg-dev libfreetype6-dev libzip-dev zip unzip git libpq-dev \
+    libpng-dev libjpeg-dev libfreetype6-dev libzip-dev zip unzip git libpq-dev libicu-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_mysql pdo_pgsql zip bcmath gd intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
