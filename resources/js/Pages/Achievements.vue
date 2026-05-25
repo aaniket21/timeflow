@@ -26,6 +26,7 @@ const profile = ref({
 
 const badges = ref([]);
 const xpHistory = ref([]);
+const calendarData = ref([]);
 
 const levelTitles = {
   1: 'Starter',
@@ -99,6 +100,15 @@ const loadGamification = async () => {
     } catch {
       // XP history is optional
     }
+
+    try {
+      const calRes = await axios.get('/api/gamification/calendar');
+      if (Array.isArray(calRes.data?.data)) {
+        calendarData.value = calRes.data.data;
+      }
+    } catch {
+      // Calendar is optional
+    }
   } catch (error) {
     console.warn('Gamification fetch failed', error);
   }
@@ -144,6 +154,33 @@ onMounted(() => {
         <div class="level-meta">{{ nextLevelLabel }}</div>
       </div>
 
+      <div class="tf-card perks-card" v-if="profile.perks">
+        <div class="xp-header">Level Perks</div>
+        <div class="perks-grid">
+          <div class="perk-item" :class="{ locked: !profile.perks.custom_colors }">
+            <i :class="profile.perks.custom_colors ? 'ti ti-check' : 'ti ti-lock'"></i> Custom Colors (Lvl 2)
+          </div>
+          <div class="perk-item" :class="{ locked: !profile.perks.streak_shield }">
+            <i :class="profile.perks.streak_shield ? 'ti ti-check' : 'ti ti-lock'"></i> Streak Shield (Lvl 3)
+          </div>
+          <div class="perk-item" :class="{ locked: !profile.perks.weekly_digest }">
+            <i :class="profile.perks.weekly_digest ? 'ti ti-check' : 'ti ti-lock'"></i> Weekly Digest (Lvl 4)
+          </div>
+          <div class="perk-item" :class="{ locked: !profile.perks.advanced_analytics }">
+            <i :class="profile.perks.advanced_analytics ? 'ti ti-check' : 'ti ti-lock'"></i> Advanced Analytics (Lvl 5)
+          </div>
+          <div class="perk-item" :class="{ locked: !profile.perks.data_export }">
+            <i :class="profile.perks.data_export ? 'ti ti-check' : 'ti ti-lock'"></i> Data Export (Lvl 6)
+          </div>
+          <div class="perk-item" :class="{ locked: !profile.perks.public_profile }">
+            <i :class="profile.perks.public_profile ? 'ti ti-check' : 'ti ti-lock'"></i> Public Profile (Lvl 7)
+          </div>
+          <div class="perk-item" :class="{ locked: !profile.perks.legend_badge }">
+            <i :class="profile.perks.legend_badge ? 'ti ti-check' : 'ti ti-lock'"></i> Legend Badge (Lvl 8)
+          </div>
+        </div>
+      </div>
+
       <div class="badge-group">
         <div class="tf-section-label">Badge Gallery</div>
         <div class="badge-grid">
@@ -151,6 +188,15 @@ onMounted(() => {
             <div class="badge-icon">{{ badge.icon }}</div>
             <div class="badge-name">{{ badge.name }}</div>
             <div class="badge-category">{{ formatCategory(badge.category) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tf-card streak-calendar" v-if="calendarData.length">
+        <div class="xp-header">Streak Calendar</div>
+        <div class="calendar-wrapper">
+          <div class="calendar-grid">
+            <div v-for="(day, index) in calendarData" :key="index" class="cal-day" :class="'cal-lvl-' + day.level" :title="day.date + ' - ' + Math.floor(day.total_seconds/60) + ' min'"></div>
           </div>
         </div>
       </div>
@@ -315,4 +361,35 @@ onMounted(() => {
 .xp-date {
   color: var(--tf-text-hint);
 }
+
+.streak-calendar {
+  margin-top: 15px;
+}
+
+.calendar-wrapper {
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.calendar-grid {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  height: 110px; /* 7 rows of 12px + gaps */
+  gap: 3px;
+  align-content: flex-start;
+}
+
+.cal-day {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--tf-bg-card-alt);
+}
+
+.cal-day.cal-lvl-0 { background: var(--tf-border-default); opacity: 0.5; }
+.cal-day.cal-lvl-1 { background: rgba(124, 92, 252, 0.3); }
+.cal-day.cal-lvl-2 { background: rgba(124, 92, 252, 0.5); }
+.cal-day.cal-lvl-3 { background: rgba(124, 92, 252, 0.8); }
+.cal-day.cal-lvl-4 { background: var(--tf-violet); }
 </style>

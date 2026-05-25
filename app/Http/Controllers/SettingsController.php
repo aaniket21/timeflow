@@ -44,6 +44,23 @@ class SettingsController extends Controller
         ]);
     }
 
+    public function updatePreferences(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'plan_auto_rollover' => ['required', 'boolean'],
+        ]);
+
+        $user->forceFill($data)->save();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'plan_auto_rollover' => $user->plan_auto_rollover,
+            ],
+        ]);
+    }
+
     public function updateNotifications(Request $request): JsonResponse
     {
         $user = $request->user();

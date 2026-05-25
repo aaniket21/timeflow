@@ -1,6 +1,6 @@
 <script setup>
 import axios from 'axios';
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 import TfModal from '../Components/TfModal.vue';
 import { useTime } from '../composables/useTime';
@@ -17,6 +17,7 @@ const props = defineProps({
 const reports = ref([]);
 const showGenerateModal = ref(false);
 const reportForm = ref({ title: '', date_from: '', date_to: '' });
+let pollInterval = null;
 
 const formatRange = (start, end) => {
   if (!start || !end) return 'Range unavailable';
@@ -45,7 +46,16 @@ const loadReports = async () => {
         status: report.file_path ? 'Ready' : 'Generating',
         statusColor: report.file_path ? 'var(--tf-mint)' : 'var(--tf-amber)',
         shareToken: report.share_token,
+        isGenerating: !report.file_path,
       }));
+      
+      const hasGenerating = reports.value.some(r => r.isGenerating);
+      if (hasGenerating && !pollInterval) {
+        pollInterval = setInterval(loadReports, 3000);
+      } else if (!hasGenerating && pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
     }
   } catch (error) {
     console.warn('Reports fetch failed', error);
@@ -57,11 +67,26 @@ const downloadReport = (reportId) => {
   window.location.href = `/api/reports/${reportId}/download`;
 };
 
-const shareReport = (report) => {
-  if (!report?.shareToken) return;
-  const link = `${window.location.origin}/reports/share/${report.shareToken}`;
+const shareReport = async (report) => {
+  if (!report?.share_token) return;
+  const link = `${window.location.origin}/reports/share/${report.share_token}`;
+  
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: report.title || 'Timeflow Report',
+        text: 'Check out my Timeflow report!',
+        url: link,
+      });
+      return;
+    } catch (err) {
+      console.warn('Share failed', err);
+    }
+  }
+
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(link);
+    if (window.TimeflowToast) window.TimeflowToast.success('Link copied to clipboard');
   } else {
     window.prompt('Copy report link', link);
   }
@@ -92,6 +117,10 @@ const deleteReport = async (id) => {
 onMounted(() => {
   loadReports();
 });
+
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval);
+});
 </script>
 
 <template>
@@ -117,12 +146,15 @@ onMounted(() => {
             <div class="report-title">{{ report.title }}</div>
             <div class="report-range">{{ report.range }}</div>
           </div>
-          <div class="report-status" :style="{ color: report.statusColor }">{{ report.status }}</div>
+          <div class="report-status" :style="{ color: report.statusColor }">
+            <span v-if="report.isGenerating" class="loading-spinner"></span>
+            {{ report.status }}
+          </div>
           <div class="report-actions">
-            <button class="outline-btn" type="button" @click="downloadReport(report.id)">
+            <button v-if="!report.isGenerating" class="outline-btn" type="button" @click="downloadReport(report.id)">
               <i class="ti ti-download" aria-hidden="true"></i> Download
             </button>
-            <button class="outline-btn" type="button" @click="shareReport(report)">
+            <button v-if="!report.isGenerating" class="outline-btn" type="button" @click="shareReport(report)">
               <i class="ti ti-share" aria-hidden="true"></i> Share
             </button>
             <button class="tf-icon-button" type="button" aria-label="Delete report" @click="deleteReport(report.id)"><i class="ti ti-trash" aria-hidden="true"></i></button>
@@ -238,5 +270,21 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

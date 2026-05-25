@@ -22,56 +22,74 @@ class ChallengeController extends Controller
         $dateInput = $request->query('date', TimeHelper::todayForUser($user));
         $date = Carbon::parse($dateInput)->toDateString();
 
-        $challenge = $this->resolveChallengeForDate($date);
+        $challenges = $this->resolveChallengesForDate($date);
 
-        if (! $challenge) {
+        if (empty($challenges)) {
             return response()->json([
                 'success' => true,
                 'data' => [
                     'date' => $date,
-                    'challenge' => null,
-                    'completed' => false,
+                    'challenges' => [],
                 ],
             ]);
         }
 
-        // V2: completed_on column instead of date
-        $completed = UserChallengeCompletion::query()
+        $completions = UserChallengeCompletion::query()
             ->where('user_id', $user->id)
             ->where('completed_on', $date)
-            ->exists();
+            ->pluck('daily_challenge_id')
+            ->toArray();
+
+        $formatted = array_map(function ($challenge) use ($completions) {
+            return [
+                'id' => $challenge->id,
+                'title' => $challenge->title,
+                'description' => $challenge->description,
+                'type' => $challenge->condition_type,
+                'target_value' => $challenge->condition_value,
+                'xp_reward' => $challenge->xp_reward,
+                'difficulty' => $challenge->difficulty,
+                'completed' => in_array($challenge->id, $completions),
+            ];
+        }, $challenges);
 
         return response()->json([
             'success' => true,
             'data' => [
                 'date' => $date,
-                'challenge' => [
-                    'id' => $challenge->id,
-                    'title' => $challenge->title,
-                    'description' => $challenge->description,
-                    'type' => $challenge->condition_type,
-                    'target_value' => $challenge->condition_value,
-                    'xp_reward' => $challenge->xp_reward,
-                ],
-                'completed' => $completed,
+                'challenges' => $formatted,
             ],
         ]);
     }
 
-    private function resolveChallengeForDate(string $date): ?DailyChallenge
+    private function resolveChallengesForDate(string $date): array
     {
-        $count = DailyChallenge::query()->count();
+        $dayIndex = Carbon::parse($date)->dayOfYear - 1;
 
-        if ($count === 0) {
-            return null;
+        $easy = DailyChallenge::where('difficulty', 'easy')->orderBy('id')->get();
+        $medium = DailyChallenge::where('difficulty', 'medium')->orderBy('id')->get();
+        $hard = DailyChallenge::where('difficulty', 'hard')->orderBy('id')->get();
+
+        $selected = [];
+
+        if ($easy->count() > 0) {
+            $selected[] = $easy[$dayIndex % $easy->count()];
+        }
+        if ($medium->count() > 0) {
+            $selected[] = $medium[$dayIndex % $medium->count()];
+        }
+        if ($hard->count() > 0) {
+            $selected[] = $hard[$dayIndex % $hard->count()];
+        }
+        
+        // Fallback for DBs without difficulties properly set yet
+        if (empty($selected)) {
+             $all = DailyChallenge::orderBy('id')->get();
+             if ($all->count() > 0) {
+                 $selected[] = $all[$dayIndex % $all->count()];
+             }
         }
 
-        $dayIndex = Carbon::parse($date)->dayOfYear - 1;
-        $offset = $count > 0 ? ($dayIndex % $count) : 0;
-
-        return DailyChallenge::query()
-            ->orderBy('id')
-            ->skip($offset)
-            ->first();
+        return $selected;
     }
 }

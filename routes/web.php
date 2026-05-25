@@ -78,9 +78,15 @@ Route::post('/logout', function () {
 // --- Authenticated routes ---
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
+    Route::get('/dashboard', function (Illuminate\Http\Request $request) {
         return Inertia::render('Dashboard', [
             'navigation' => buildNavigation('Dashboard'),
+            'gamification' => Inertia::defer(fn() => app(\App\Http\Controllers\GamificationController::class)->profile($request)->getData(true)['data'] ?? null),
+            'analytics' => Inertia::defer(fn() => app(\App\Http\Controllers\AnalyticsController::class)->daily($request)->getData(true)['data'] ?? null),
+            'recent' => Inertia::defer(fn() => app(\App\Http\Controllers\SessionController::class)->recent($request)->getData(true)['data'] ?? null),
+            'challenges' => Inertia::defer(fn() => app(\App\Http\Controllers\ChallengeController::class)->today($request)->getData(true)['data'] ?? null),
+            'habits' => Inertia::defer(fn() => app(\App\Http\Controllers\GoalController::class)->todayHabits($request)->getData(true)['data'] ?? null),
+            'timetable' => Inertia::defer(fn() => app(\App\Http\Controllers\TimetableController::class)->today($request)->getData(true)['data'] ?? null),
         ]);
     });
 

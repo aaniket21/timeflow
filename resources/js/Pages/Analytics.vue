@@ -20,6 +20,8 @@ const dailyDate = ref(time.now());
 const weeklyStartDate = ref(time.startOfWeek());
 const monthlyDate = ref(time.now());
 
+const bestHoursData = ref(null);
+
 const dailySummary = ref({
   total_seconds: 0,
   focus_sessions: 0,
@@ -328,6 +330,15 @@ const loadMonthly = async () => {
   } catch (error) {
     console.warn('Monthly analytics fetch failed', error);
   }
+
+  try {
+    const res = await axios.get('/api/analytics/best-hours');
+    if (res.data?.data) {
+      bestHoursData.value = res.data.data;
+    }
+  } catch (error) {
+    console.warn('Best hours fetch failed', error);
+  }
 };
 
 const loadInsights = async () => {
@@ -617,6 +628,27 @@ function heatmapLevel(totalSeconds) {
               class="calendar-cell"
               :class="'level-' + day.level"
             ></div>
+          </div>
+        </div>
+
+        <div class="tf-card best-hours-card">
+          <div class="card-title">Best Hours Heatmap</div>
+          <div v-if="bestHoursData?.locked" class="empty-state">
+            Unlock at 14 days of data ({{ bestHoursData.days_logged }}/14 days)
+          </div>
+          <div v-else-if="bestHoursData?.grid" class="best-hours-grid">
+            <div class="bh-row" v-for="(dayRow, dayIndex) in bestHoursData.grid" :key="dayIndex">
+              <div class="bh-day-label">{{ ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][dayIndex] }}</div>
+              <div class="bh-hours">
+                <div 
+                  v-for="(total, hourIndex) in dayRow" 
+                  :key="hourIndex" 
+                  class="bh-cell" 
+                  :class="'cal-lvl-' + heatmapLevel(total)" 
+                  :title="`${hourIndex}:00 - ${Math.floor(total/60)} min`"
+                ></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1066,4 +1098,47 @@ function heatmapLevel(totalSeconds) {
     align-items: flex-start;
   }
 }
+
+.best-hours-card {
+  margin-top: 15px;
+}
+
+.best-hours-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  overflow-x: auto;
+}
+
+.bh-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bh-day-label {
+  width: 35px;
+  font-size: 11px;
+  color: var(--tf-text-hint);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.bh-hours {
+  display: flex;
+  gap: 3px;
+}
+
+.bh-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--tf-bg-card-alt);
+}
+.bh-cell.cal-lvl-0 { background: var(--tf-border-default); opacity: 0.3; }
+.bh-cell.cal-lvl-1 { background: rgba(124, 92, 252, 0.3); }
+.bh-cell.cal-lvl-2 { background: rgba(124, 92, 252, 0.5); }
+.bh-cell.cal-lvl-3 { background: rgba(124, 92, 252, 0.8); }
+.bh-cell.cal-lvl-4 { background: var(--tf-violet); }
 </style>

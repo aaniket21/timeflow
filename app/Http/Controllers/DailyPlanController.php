@@ -13,12 +13,35 @@ class DailyPlanController extends Controller
     public function today(Request $request): JsonResponse
     {
         $user = $request->user();
-        $date = Carbon::parse($request->query('date', now()->toDateString()))->toDateString();
+        $dateInput = $request->query('date', \App\Helpers\TimeHelper::todayForUser($user));
+        $date = Carbon::parse($dateInput)->toDateString();
 
         $plan = DailyPlan::query()
             ->where('user_id', $user->id)
             ->where('date', $date)
             ->first();
+
+        if (! $plan && $user->plan_auto_rollover) {
+            $yesterday = Carbon::parse($date)->subDay()->toDateString();
+            $yesterdayPlan = DailyPlan::query()
+                ->where('user_id', $user->id)
+                ->where('date', $yesterday)
+                ->first();
+
+            if ($yesterdayPlan && is_array($yesterdayPlan->tasks)) {
+                $unfinishedTasks = array_filter($yesterdayPlan->tasks, function ($task) {
+                    return empty($task['done']);
+                });
+
+                if (!empty($unfinishedTasks)) {
+                    $plan = DailyPlan::create([
+                        'user_id' => $user->id,
+                        'date' => $date,
+                        'tasks' => array_values($unfinishedTasks),
+                    ]);
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -36,7 +59,8 @@ class DailyPlanController extends Controller
             'tasks.*.done' => ['required', 'boolean'],
         ]);
 
-        $date = Carbon::parse($data['date'] ?? now())->toDateString();
+        $dateInput = $data['date'] ?? \App\Helpers\TimeHelper::todayForUser($user);
+        $date = Carbon::parse($dateInput)->toDateString();
 
         $plan = DailyPlan::query()->updateOrCreate([
             'user_id' => $user->id,

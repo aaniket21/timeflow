@@ -36,9 +36,22 @@ watch(sessionNotes, (newVal) => {
   }
 });
 const timerSeconds = ref(0);
-const pomodoroSeconds = ref(25 * 60);
+
+import { usePage } from '@inertiajs/vue3';
+const page = usePage();
+const pomodoroWorkMin = computed(() => Number(page.props.auth.user?.pomodoro_work_min || 25));
+const pomodoroBreakMin = computed(() => Number(page.props.auth.user?.pomodoro_break_min || 5));
+
+const pomodoroSeconds = ref(pomodoroWorkMin.value * 60);
 const pomodoroPhase = ref('work');
 const pomodoroCycle = ref(0);
+
+const ringOffset = computed(() => {
+  const total = pomodoroPhase.value === 'work' ? pomodoroWorkMin.value * 60 : pomodoroBreakMin.value * 60;
+  if (total === 0) return 553;
+  const progress = 1 - (pomodoroSeconds.value / total);
+  return 553 - (553 * progress);
+});
 
 const projects = ref([]);
 const sessionGroups = ref([]);
@@ -198,10 +211,13 @@ const stopSession = async () => {
   isRunning.value = false;
   if (activeSessionId.value) {
     try {
-      await axios.post(`/api/sessions/${activeSessionId.value}/stop`, {
+      const res = await axios.post(`/api/sessions/${activeSessionId.value}/stop`, {
         notes: sessionNotes.value || null,
       });
       localStorage.removeItem(`tf_notes_${activeSessionId.value}`);
+      if (res.data?.meta?.xp_gained > 0 && window.TimeflowToast) {
+        window.TimeflowToast.showXP(res.data.meta.xp_gained, 'Session saved');
+      }
     } catch (e) {
       console.warn('Stop session failed', e);
       if (window.TimeflowToast) window.TimeflowToast.info('Offline: Session saved, will sync later');
@@ -209,6 +225,9 @@ const stopSession = async () => {
   }
   activeSessionId.value = null;
   timerSeconds.value = 0;
+  pomodoroSeconds.value = pomodoroWorkMin.value * 60;
+  pomodoroPhase.value = 'work';
+  pomodoroCycle.value = 0;
   sessionNotes.value = '';
   await clearState();
   loadSessionLog(true);
@@ -270,6 +289,25 @@ const restoreSessionFromData = async (session, startedAtTimestamp) => {
   sessionNotes.value = localStorage.getItem(`tf_notes_${session.id}`) || session.notes || '';
 
   timerSeconds.value = Math.max(0, Math.floor((Date.now() - startedAtTimestamp) / 1000));
+  
+  if (mode.value === 'pomodoro') {
+    const elapsed = timerSeconds.value;
+    const workSec = pomodoroWorkMin.value * 60;
+    const breakSec = pomodoroBreakMin.value * 60;
+    const cycleSec = workSec + breakSec;
+    
+    pomodoroCycle.value = Math.floor(elapsed / cycleSec);
+    const remainder = elapsed % cycleSec;
+    
+    if (remainder < workSec) {
+      pomodoroPhase.value = 'work';
+      pomodoroSeconds.value = workSec - remainder;
+    } else {
+      pomodoroPhase.value = 'break';
+      pomodoroSeconds.value = cycleSec - remainder;
+    }
+  }
+
   isRunning.value = true;
   startTicking();
 };
@@ -277,20 +315,28 @@ const restoreSessionFromData = async (session, startedAtTimestamp) => {
 const startTicking = () => {
   stopTicking();
   timerInterval = setInterval(() => {
+    timerSeconds.value += 1;
+    
     if (mode.value === 'pomodoro') {
       pomodoroSeconds.value = Math.max(0, pomodoroSeconds.value - 1);
       if (pomodoroSeconds.value === 0) {
         if (pomodoroPhase.value === 'work') {
           pomodoroPhase.value = 'break';
-          pomodoroSeconds.value = 5 * 60;
+          pomodoroSeconds.value = pomodoroBreakMin.value * 60;
           pomodoroCycle.value += 1;
+          
+          if (activeSessionId.value) {
+            axios.post(`/api/sessions/${activeSessionId.value}/pomodoro-interval`).then(res => {
+               if (window.TimeflowToast && res.data?.meta?.xp_gained > 0) {
+                  window.TimeflowToast.showXP(res.data.meta.xp_gained, 'Pomodoro interval completed!');
+               }
+            }).catch(e => console.warn('Pomodoro interval API failed', e));
+          }
         } else {
           pomodoroPhase.value = 'work';
-          pomodoroSeconds.value = 25 * 60;
+          pomodoroSeconds.value = pomodoroWorkMin.value * 60;
         }
       }
-    } else {
-      timerSeconds.value += 1;
     }
   }, 1000);
 };
@@ -477,9 +523,33 @@ onUnmounted(() => { stopTicking(); });
             <input class="text-input" type="text" placeholder="Enter title..." v-model="otherTitle" />
           </div>
 
+          <div class="mode-toggle">
+            <button class="mode-pill" :class="{ active: mode === 'timer' }" @click="setMode('timer')" :disabled="isRunning">Timer</button>
+            <button class="mode-pill" :class="{ active: mode === 'pomodoro' }" @click="setMode('pomodoro')" :disabled="isRunning">Pomodoro</button>
+          </div>
+
           <div class="tf-card timer-card">
             <div class="status-label" :class="{ running: isRunning }">{{ statusLabel }}</div>
-            <div class="timer-display">{{ timerDisplay }}</div>
+            
+            <div v-if="mode === 'pomodoro'" class="pomodoro-ring">
+              <svg viewBox="0 0 200 200">
+                <circle class="ring-track" cx="100" cy="100" r="88" />
+                <circle class="ring-fill" cx="100" cy="100" r="88" :stroke-dashoffset="ringOffset" />
+              </svg>
+              <div class="ring-time">
+                <div class="timer-display" style="font-size: 36px; padding-top: 10px;">{{ timerDisplay }}</div>
+              </div>
+            </div>
+            
+            <div v-else class="timer-display">{{ timerDisplay }}</div>
+            
+            <div v-if="mode === 'pomodoro'" class="pomodoro-status">
+              {{ pomodoroPhase === 'work' ? 'Focus Time' : 'Break Time' }}
+            </div>
+            <div v-if="mode === 'pomodoro'" class="pomodoro-dots">
+              <div v-for="dot in pomodoroDots" :key="dot.id" class="pomodoro-dot" :class="dot.state"></div>
+            </div>
+
             <div class="fab-container">
               <button class="fab-btn" :class="{ danger: isRunning }" type="button" @click="toggleTimer">
                 <i class="ti" :class="isRunning ? 'ti-square' : 'ti-player-play'" aria-hidden="true"></i>

@@ -14,18 +14,18 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TimetableController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\SetUserTimezone;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
-
-use App\Http\Middleware\SetUserTimezone;
 
 Route::middleware(['auth:sanctum', SetUserTimezone::class])->group(function () {
     Route::get('/analytics/daily', [AnalyticsController::class, 'daily']);
     Route::get('/analytics/weekly', [AnalyticsController::class, 'weekly']);
     Route::get('/analytics/monthly', [AnalyticsController::class, 'monthly']);
     Route::get('/analytics/heatmap', [AnalyticsController::class, 'heatmap']);
+    Route::get('/analytics/best-hours', [AnalyticsController::class, 'bestHours']);
     Route::get('/analytics/insights', [AnalyticsController::class, 'insights']);
     Route::get('/challenges/today', [ChallengeController::class, 'today']);
     Route::get('/projects', [ProjectController::class, 'index']);
@@ -58,6 +58,7 @@ Route::middleware(['auth:sanctum', SetUserTimezone::class])->group(function () {
     Route::get('/gamification/profile', [GamificationController::class, 'profile']);
     Route::get('/gamification/badges', [GamificationController::class, 'badges']);
     Route::get('/gamification/leaderboard', [GamificationController::class, 'leaderboard']);
+    Route::get('/gamification/calendar', [GamificationController::class, 'calendar']);
     Route::put('/gamification/leaderboard-opt-in', [GamificationController::class, 'updateLeaderboardOptIn']);
     Route::get('/sessions/active', [SessionController::class, 'active']);
     Route::get('/sessions/recent', [SessionController::class, 'recent']);
@@ -72,6 +73,7 @@ Route::middleware(['auth:sanctum', SetUserTimezone::class])->group(function () {
     Route::delete('/reports/{report}', [ReportController::class, 'destroy']);
     Route::get('/reports/{report}/download', [ReportController::class, 'download']);
     Route::put('/settings/profile', [SettingsController::class, 'updateProfile']);
+    Route::put('/settings/preferences', [SettingsController::class, 'updatePreferences']);
     Route::put('/settings/notifications', [SettingsController::class, 'updateNotifications']);
     Route::put('/settings/pomodoro', [SettingsController::class, 'updatePomodoro']);
     Route::get('/settings/export', [SettingsController::class, 'exportData']);

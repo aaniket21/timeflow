@@ -136,54 +136,81 @@ class SessionController extends Controller
             ->sum('duration_seconds');
     }
 
-    private function resolveChallengeForDate(string $date): ?DailyChallenge
+    private function resolveChallengeForDate(string $date): ?\App\Models\DailyChallenge
     {
-        $count = DailyChallenge::query()->count();
-
-        if ($count === 0) {
-            return null;
-        }
-
-        $dayIndex = Carbon::parse($date)->dayOfYear - 1;
-        $offset = $count > 0 ? ($dayIndex % $count) : 0;
-
-        return DailyChallenge::query()
-            ->orderBy('id')
-            ->skip($offset)
-            ->first();
+        // Kept for backward compatibility if needed, but not used now
+        return null;
     }
 
     private function applyDailyChallenge(int $userId, string $date, int $dailyTotalSeconds, int $dailyPomodoros): int
     {
-        $challenge = $this->resolveChallengeForDate($date);
+        $challenges = $this->resolveChallengesForDate($date);
 
-        if (! $challenge) {
+        if (empty($challenges)) {
             return 0;
         }
 
-        $meetsTarget = false;
+        $totalXpGained = 0;
 
-        if ($challenge->condition_type === 'hours_logged') {
-            $meetsTarget = $dailyTotalSeconds >= (int) round($challenge->condition_value * 3600);
+        foreach ($challenges as $challenge) {
+            $meetsTarget = false;
+
+            if ($challenge->condition_type === 'hours_logged') {
+                $meetsTarget = $dailyTotalSeconds >= (int) round($challenge->condition_value * 3600);
+            }
+
+            if ($challenge->condition_type === 'pomodoros') {
+                $meetsTarget = $dailyPomodoros >= (int) $challenge->condition_value;
+            }
+
+            if (! $meetsTarget) {
+                continue;
+            }
+
+            $completion = \App\Models\UserChallengeCompletion::firstOrCreate(
+                ['user_id' => $userId, 'daily_challenge_id' => $challenge->id, 'completed_on' => \Carbon\Carbon::parse($date)->toDateString()],
+            );
+
+            if ($completion->wasRecentlyCreated) {
+                $completions = \App\Models\UserChallengeCompletion::where('user_id', $userId)->count();
+                if ($completions > 0 && $completions % 7 === 0) {
+                    app(\App\Services\StreakService::class)->awardShield(\App\Models\User::find($userId));
+                }
+                $totalXpGained += $this->grantXp($userId, (int) $challenge->xp_reward, 'daily_challenge', $challenge->id, "date:{$date}");
+            }
         }
 
-        if ($challenge->condition_type === 'pomodoros') {
-            $meetsTarget = $dailyPomodoros >= (int) $challenge->condition_value;
+        return $totalXpGained;
+    }
+
+    private function resolveChallengesForDate(string $date): array
+    {
+        $dayIndex = \Carbon\Carbon::parse($date)->dayOfYear - 1;
+
+        $easy = \App\Models\DailyChallenge::where('difficulty', 'easy')->orderBy('id')->get();
+        $medium = \App\Models\DailyChallenge::where('difficulty', 'medium')->orderBy('id')->get();
+        $hard = \App\Models\DailyChallenge::where('difficulty', 'hard')->orderBy('id')->get();
+
+        $selected = [];
+
+        if ($easy->count() > 0) {
+            $selected[] = $easy[$dayIndex % $easy->count()];
+        }
+        if ($medium->count() > 0) {
+            $selected[] = $medium[$dayIndex % $medium->count()];
+        }
+        if ($hard->count() > 0) {
+            $selected[] = $hard[$dayIndex % $hard->count()];
         }
 
-        if (! $meetsTarget) {
-            return 0;
+        if (empty($selected)) {
+            $all = \App\Models\DailyChallenge::orderBy('id')->get();
+            if ($all->count() > 0) {
+                $selected[] = $all[$dayIndex % $all->count()];
+            }
         }
 
-        $completion = UserChallengeCompletion::firstOrCreate(
-            ['user_id' => $userId, 'challenge_id' => $challenge->id, 'completed_on' => Carbon::parse($date)->toDateString()],
-        );
-
-        if ($completion->wasRecentlyCreated) {
-            return $this->grantXp($userId, (int) $challenge->xp_reward, 'daily_challenge', $challenge->id, "date:{$date}");
-        }
-
-        return 0;
+        return $selected;
     }
 
     private function awardBadge(int $userId, string $slug, array &$badgesEarned, int &$xpGained): void
@@ -273,10 +300,10 @@ class SessionController extends Controller
             $streakXp = (int) round(5 * $multiplier);
             $xpGained += $this->grantXp($user->id, $streakXp, 'streak_daily', null, "date:{$activityDateString}");
         }
+        $this->awardBadge($user->id, 'session_count', $badgesEarned, $xpGained);
 
-        if ($session->is_pomodoro && $session->duration_seconds >= ($user->pomodoro_work_min * 60)) {
-            $xpGained += $this->grantXp($user->id, 10, 'pomodoro_complete', $session->id);
-            $this->awardBadge($user->id, 'tomato_head', $badgesEarned, $xpGained);
+        if ($session->duration_seconds >= 7200) {
+            $this->awardBadge($user->id, 'deep_work', $badgesEarned, $xpGained);
         }
 
         // PRD §6 — Use timezone-aware daily totals
@@ -533,6 +560,44 @@ class SessionController extends Controller
 
         $meta = $this->applyGamification($user, $timeSession, $endedAt);
 
+        // If it's a pomodoro session, grant any remaining interval XP
+        if ($timeSession->is_pomodoro && $user->pomodoro_work_min > 0) {
+            $intervals = floor($timeSession->duration_seconds / ($user->pomodoro_work_min * 60));
+            $alreadyAwarded = \App\Models\XpTransaction::query()
+                ->where('user_id', $user->id)
+                ->where('reason', 'pomodoro_complete')
+                ->where('reference_id', $timeSession->id)
+                ->count();
+            
+            $toAward = $intervals - $alreadyAwarded;
+            if ($toAward > 0) {
+                $xpGained = 0;
+                $badgesEarned = $meta['badges_earned'] ?? [];
+                
+                for ($i = 0; $i < $toAward; $i++) {
+                    $xpGained += $this->grantXp($user->id, 10, 'pomodoro_complete', $timeSession->id);
+                }
+                $this->awardBadge($user->id, 'tomato_head', $badgesEarned, $xpGained);
+                
+                $meta['xp_gained'] = ($meta['xp_gained'] ?? 0) + $xpGained;
+                $meta['badges_earned'] = $badgesEarned;
+                
+                $newXpTotal = $user->xp_total + $xpGained;
+                $calculatedLevel = $this->determineLevel($newXpTotal);
+                $newLevel = $calculatedLevel > $user->level ? $calculatedLevel : null;
+                
+                if ($xpGained > 0) {
+                    $user->forceFill([
+                        'xp_total' => $newXpTotal,
+                        'level' => $calculatedLevel,
+                    ])->save();
+                }
+                if ($newLevel) {
+                    $meta['new_level'] = $newLevel;
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -548,6 +613,39 @@ class SessionController extends Controller
                 ],
             ],
             'meta' => $meta,
+        ]);
+    }
+
+    public function pomodoroInterval(Request $request, int $session): JsonResponse
+    {
+        $user = $request->user();
+        $timeSession = TimeSession::query()
+            ->where('id', $session)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $xpGained = 0;
+        $badgesEarned = [];
+
+        $xpGained += $this->grantXp($user->id, 10, 'pomodoro_complete', $timeSession->id);
+        $this->awardBadge($user->id, 'tomato_head', $badgesEarned, $xpGained);
+
+        $newXpTotal = $user->xp_total + $xpGained;
+        $calculatedLevel = $this->determineLevel($newXpTotal);
+        $newLevel = $calculatedLevel > $user->level ? $calculatedLevel : null;
+
+        $user->forceFill([
+            'xp_total' => $newXpTotal,
+            'level' => $calculatedLevel,
+        ])->save();
+
+        return response()->json([
+            'success' => true,
+            'meta' => [
+                'xp_gained' => $xpGained,
+                'new_level' => $newLevel,
+                'badges_earned' => $badgesEarned,
+            ],
         ]);
     }
 

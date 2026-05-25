@@ -36,6 +36,16 @@ class GamificationController extends Controller
                 ->where('user_id', $user->id)
                 ->count();
 
+            $perks = [
+                'custom_colors' => $currentLevel >= 2,
+                'streak_shield' => $currentLevel >= 3,
+                'weekly_digest' => $currentLevel >= 4,
+                'advanced_analytics' => $currentLevel >= 5,
+                'data_export' => $currentLevel >= 6,
+                'public_profile' => $currentLevel >= 7,
+                'legend_badge' => $currentLevel >= 8,
+            ];
+
             return [
                 'xp_total' => $user->xp_total,
                 'level' => $currentLevel,
@@ -46,6 +56,7 @@ class GamificationController extends Controller
                 'streak_shield_count' => $user->streak_shield_count,
                 'badge_count' => $badgeCount,
                 'last_active_date' => $user->last_active_date?->toDateString(),
+                'perks' => $perks,
             ];
         });
 

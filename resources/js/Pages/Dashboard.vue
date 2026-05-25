@@ -3,6 +3,7 @@ import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import OnboardingWizard from '../Components/OnboardingWizard.vue';
 import { useTime } from '../composables/useTime';
 
 const { format, todayDate, currentHour, daysUntil, toTimestamp } = useTime();
@@ -12,6 +13,12 @@ const props = defineProps({
     type: Object,
     default: () => ({ sections: [] }),
   },
+  gamification: Object,
+  analytics: Object,
+  recent: Array,
+  challenges: Object,
+  habits: Object,
+  timetable: Array,
 });
 
 function buildEmptyHeatmap() {
@@ -24,7 +31,7 @@ const todayStats = ref({ total_seconds: 0, focus_sessions: 0, avg_session_second
 const weekStats = ref({ total_seconds: 0, goal_seconds: 0 });
 const streak = ref({ current: 0, longest: 0 });
 const xp = ref({ total: 0, level: 1, next_level: 200, title: 'Starter' });
-const challenge = ref({ title: 'No challenge today', progress: 0, target: 0, reward: 0 });
+const challenges = ref([]);
 const activeSession = ref(null);
 const timerSeconds = ref(0);
 const exams = ref([]);
@@ -34,6 +41,7 @@ const habitsToday = ref([]);
 const heatmap = ref(buildEmptyHeatmap());
 const recentSessions = ref([]);
 const insights = ref([]);
+const showOnboarding = ref(false);
 
 const habitPalette = ['var(--tf-violet)', 'var(--tf-rose)', 'var(--tf-mint)', 'var(--tf-amber)', 'var(--tf-sky)', 'var(--tf-red)'];
 const levelTitles = {
@@ -206,7 +214,7 @@ function resolveChallengeProgress(challengeData, completed) {
   const target = Math.round(Number(challengeData?.target_value || 0));
 
   if (!challengeData) {
-    return { progress: 0, target: 0, reward: 0, title: 'No challenge today' };
+    return { progress: 0, target: 0, reward: 0, title: 'No challenge today', difficulty: 'easy', completed: false };
   }
 
   if (completed) {
@@ -215,36 +223,105 @@ function resolveChallengeProgress(challengeData, completed) {
       target,
       reward: Number(challengeData.xp_reward || 0),
       title: challengeData.title,
+      difficulty: challengeData.difficulty || 'medium',
+      completed: true,
     };
   }
 
+  let progressVal = 0;
   if (challengeData.type === 'hours_logged') {
     const hours = Math.floor(Number(todayStats.value.total_seconds || 0) / 3600);
-    return {
-      progress: Math.min(target, hours),
-      target,
-      reward: Number(challengeData.xp_reward || 0),
-      title: challengeData.title,
-    };
-  }
-
-  if (challengeData.type === 'pomodoros') {
+    progressVal = Math.min(target, hours);
+  } else if (challengeData.type === 'pomodoros') {
     const pomodoros = Number(todayStats.value.pomodoro_count || 0);
-    return {
-      progress: Math.min(target, pomodoros),
-      target,
-      reward: Number(challengeData.xp_reward || 0),
-      title: challengeData.title,
-    };
+    progressVal = Math.min(target, pomodoros);
   }
 
   return {
-    progress: 0,
+    progress: progressVal,
     target,
     reward: Number(challengeData.xp_reward || 0),
     title: challengeData.title,
+    difficulty: challengeData.difficulty || 'medium',
+    completed: false,
   };
 }
+
+    watch(() => props.gamification, (payload) => {
+      if (payload) {
+        const level = Number(payload.level || 1);
+        const nextLevel = Number(payload.next_level_xp || 0);
+        xp.value = {
+          total: Number(payload.xp_total || 0),
+          level,
+          next_level: nextLevel > 0 ? nextLevel : Math.max(Number(payload.xp_total || 0), 1),
+          title: levelTitles[level] || 'Starter',
+        };
+        streak.value = {
+          current: Number(payload.streak_current || 0),
+          longest: Number(payload.streak_longest || 0),
+          shields: Number(payload.streak_shield_count || 0),
+        };
+      }
+    }, { immediate: true });
+
+watch(() => props.analytics, (payload) => {
+  if (payload) {
+    todayStats.value = {
+      total_seconds: Number(payload.total_seconds || 0),
+      focus_sessions: Number(payload.focus_sessions || 0),
+      avg_session_seconds: Number(payload.avg_session_seconds || 0),
+      pomodoro_count: Number(payload.pomodoro_count || 0),
+    };
+  }
+}, { immediate: true });
+
+watch(() => props.recent, (payload) => {
+  if (Array.isArray(payload)) {
+    recentSessions.value = payload.map((session) => ({
+      id: session.id,
+      name: session.label,
+      category: session.category,
+      duration: formatDuration(session.duration_seconds),
+      color: session.color,
+    }));
+  }
+}, { immediate: true });
+
+watch(() => props.challenges, (payload) => {
+  if (Array.isArray(payload?.challenges) && payload.challenges.length > 0) {
+    challenges.value = payload.challenges.map(c => resolveChallengeProgress(c, c.completed));
+  } else if (payload?.challenge) {
+    // Backwards compatibility if it ever returns single
+    challenges.value = [resolveChallengeProgress(payload.challenge, payload.completed)];
+  } else {
+    challenges.value = [];
+  }
+}, { immediate: true });
+
+watch(() => props.habits, (payload) => {
+  if (Array.isArray(payload?.habits)) {
+    habitsToday.value = payload.habits.map((habit, index) => ({
+      id: habit.id,
+      name: habit.title,
+      color: habitPalette[index % habitPalette.length],
+      streak: Number(habit.streak_current || 0),
+      done: !!habit.done,
+    }));
+  }
+}, { immediate: true });
+
+watch(() => props.timetable, (payload) => {
+  if (Array.isArray(payload)) {
+    timetableToday.value = payload.map((block) => ({
+      id: block.id,
+      title: block.title,
+      start_time: block.start_time,
+      type: block.type,
+      color: block.color,
+    }));
+  }
+}, { immediate: true });
 
 async function saveDailyPlan() {
   if (!dailyPlan.value.length) return;
@@ -260,35 +337,28 @@ async function saveDailyPlan() {
 }
 
 async function loadDashboard() {
+  // We use router.reload() for deferred Inertia props
+  router.reload({
+    only: ['gamification', 'analytics', 'recent', 'challenges', 'habits', 'timetable']
+  });
+
   const [
     userResult,
-    dailyResult,
     weeklyResult,
     heatmapResult,
     examsResult,
-    timetableResult,
     insightsResult,
-    challengeResult,
     activeResult,
-    recentResult,
     planResult,
-    habitsResult,
-    gamificationResult,
     weeklyGoalResult,
   ] = await Promise.allSettled([
     axios.get('/api/user'),
-    axios.get('/api/analytics/daily'),
     axios.get('/api/analytics/weekly'),
     axios.get('/api/analytics/heatmap'),
     axios.get('/api/exams'),
-    axios.get('/api/timetable/today'),
     axios.get('/api/analytics/insights'),
-    axios.get('/api/challenges/today'),
     axios.get('/api/sessions/active'),
-    axios.get('/api/sessions/recent'),
     axios.get('/api/daily-plans/today'),
-    axios.get('/api/habits/today'),
-    axios.get('/api/gamification/profile'),
     axios.get('/api/goals', { params: { type: 'weekly_hours', active: true } }),
   ]);
 
@@ -296,16 +366,6 @@ async function loadDashboard() {
   if (userPayload) {
     userProfile.value = userPayload;
     dailyGoalHours.value = Number(userPayload.daily_goal_hours ?? dailyGoalHours.value);
-  }
-
-  const dailyPayload = dailyResult.status === 'fulfilled' ? dailyResult.value.data?.data : null;
-  if (dailyPayload) {
-    todayStats.value = {
-      total_seconds: Number(dailyPayload.total_seconds || 0),
-      focus_sessions: Number(dailyPayload.focus_sessions || 0),
-      avg_session_seconds: Number(dailyPayload.avg_session_seconds || 0),
-      pomodoro_count: Number(dailyPayload.pomodoro_count || 0),
-    };
   }
 
   const weeklyPayload = weeklyResult.status === 'fulfilled' ? weeklyResult.value.data?.data : null;
@@ -342,50 +402,11 @@ async function loadDashboard() {
     exams.value = [];
   }
 
-  const timetablePayload = timetableResult.status === 'fulfilled' ? timetableResult.value.data?.data : null;
-  if (Array.isArray(timetablePayload)) {
-    timetableToday.value = timetablePayload.map((block) => ({
-      id: block.id,
-      title: block.title,
-      start_time: block.start_time,
-      type: block.type,
-      color: block.color,
-    }));
-  } else {
-    timetableToday.value = [];
-  }
-
   const insightsPayload = insightsResult.status === 'fulfilled' ? insightsResult.value.data?.data : null;
   insights.value = Array.isArray(insightsPayload) ? insightsPayload : [];
 
-  const challengePayload = challengeResult.status === 'fulfilled' ? challengeResult.value.data?.data : null;
-  if (challengePayload?.challenge) {
-    const progress = resolveChallengeProgress(challengePayload.challenge, challengePayload.completed);
-    challenge.value = {
-      title: progress.title,
-      progress: progress.progress,
-      target: progress.target,
-      reward: progress.reward,
-    };
-  } else {
-    challenge.value = { title: 'No challenge today', progress: 0, target: 0, reward: 0 };
-  }
-
   const activePayload = activeResult.status === 'fulfilled' ? activeResult.value.data?.data : null;
   setActiveSession(activePayload?.session || null);
-
-  const recentPayload = recentResult.status === 'fulfilled' ? recentResult.value.data?.data : null;
-  if (Array.isArray(recentPayload)) {
-    recentSessions.value = recentPayload.map((session) => ({
-      id: session.id,
-      name: session.label,
-      category: session.category,
-      duration: formatDuration(session.duration_seconds),
-      color: session.color,
-    }));
-  } else {
-    recentSessions.value = [];
-  }
 
   const planPayload = planResult.status === 'fulfilled' ? planResult.value.data?.data : null;
   const tasks = Array.isArray(planPayload?.tasks) ? planPayload.tasks : [];
@@ -394,43 +415,34 @@ async function loadDashboard() {
     text: task.text,
     done: !!task.done,
   }));
-
-  const habitsPayload = habitsResult.status === 'fulfilled' ? habitsResult.value.data?.data : null;
-  if (Array.isArray(habitsPayload?.habits)) {
-    habitsToday.value = habitsPayload.habits.map((habit, index) => ({
-      id: habit.id,
-      name: habit.title,
-      color: habitPalette[index % habitPalette.length],
-      streak: Number(habit.streak_current || 0),
-      done: !!habit.done,
-    }));
-  } else {
-    habitsToday.value = [];
-  }
-
-  const gamificationPayload = gamificationResult.status === 'fulfilled' ? gamificationResult.value.data?.data : null;
-  if (gamificationPayload) {
-    const level = Number(gamificationPayload.level || 1);
-    const nextLevel = Number(gamificationPayload.next_level_xp || 0);
-    xp.value = {
-      total: Number(gamificationPayload.xp_total || 0),
-      level,
-      next_level: nextLevel > 0 ? nextLevel : Math.max(Number(gamificationPayload.xp_total || 0), 1),
-      title: levelTitles[level] || 'Starter',
-    };
-
-    streak.value = {
-      current: Number(gamificationPayload.streak_current || 0),
-      longest: Number(gamificationPayload.streak_longest || 0),
-    };
-  }
 }
 
 onMounted(() => {
   loadDashboard().catch((error) => {
     console.warn('Dashboard data fetch failed', error);
   });
+  
+  if (!localStorage.getItem('timeflow_onboarded')) {
+    checkOnboardingStatus();
+  }
 });
+
+const checkOnboardingStatus = async () => {
+  try {
+    const res = await axios.get('/api/projects');
+    if (res.data?.data && res.data.data.length === 0) {
+      showOnboarding.value = true;
+    } else {
+      localStorage.setItem('timeflow_onboarded', '1');
+    }
+  } catch (error) {
+    console.warn('Failed to check projects for onboarding', error);
+  }
+};
+
+const handleOnboardingStartTimer = (projectId) => {
+  router.visit('/timer?project=' + projectId);
+};
 
 onUnmounted(() => {
   stopTimer();
@@ -525,7 +537,12 @@ onUnmounted(() => {
         </div>
         <div class="tf-card stat-card">
           <div class="stat-label">Streak</div>
-          <div class="stat-value">{{ streak.current }}d</div>
+          <div class="stat-value" style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+            {{ streak.current }}d
+            <div v-if="streak.shields > 0" class="shields-wrapper">
+              <i v-for="n in streak.shields" :key="n" class="ti ti-shield-filled" style="color: var(--tf-mint); font-size: 16px;" title="Streak Shield active"></i>
+            </div>
+          </div>
           <div class="stat-meta">best {{ streak.longest }} days</div>
         </div>
       </div>
@@ -543,11 +560,17 @@ onUnmounted(() => {
           <div class="xp-meta">Next {{ xp.next_level }} XP</div>
         </div>
         <div class="tf-card">
-          <div class="challenge-label">Daily challenge</div>
-          <div class="challenge-title">{{ challenge.title }}</div>
-          <div class="challenge-progress">
-            <span v-for="index in challenge.target" :key="index" class="challenge-dot" :class="{ done: index <= challenge.progress }"></span>
-            <span class="challenge-xp">+{{ challenge.reward }} XP</span>
+          <div class="challenge-label" style="margin-bottom: 8px;">Daily challenges</div>
+          <div v-if="challenges.length === 0" class="challenge-title">No challenges today</div>
+          <div v-for="(c, idx) in challenges" :key="idx" class="challenge-item" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <div class="challenge-title" style="font-size: 14px; margin-bottom: 0;">{{ c.title }}</div>
+              <div class="difficulty-badge" :class="'diff-' + c.difficulty">{{ c.difficulty }}</div>
+            </div>
+            <div class="challenge-progress">
+              <span v-for="index in c.target" :key="index" class="challenge-dot" :class="{ done: index <= c.progress }"></span>
+              <span class="challenge-xp">+{{ c.reward }} XP</span>
+            </div>
           </div>
         </div>
       </div>
@@ -608,11 +631,29 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
+      
+      <OnboardingWizard 
+        :isOpen="showOnboarding" 
+        @close="showOnboarding = false" 
+        @start-timer="handleOnboardingStartTimer" 
+      />
     </AppShell>
   </div>
 </template>
 
 <style scoped>
+.difficulty-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.diff-easy { background: rgba(14, 207, 164, 0.15); color: var(--tf-mint); }
+.diff-medium { background: rgba(245, 166, 35, 0.15); color: var(--tf-amber); }
+.diff-hard { background: rgba(239, 68, 68, 0.15); color: var(--tf-red); }
+
 .dashboard-page {
   min-height: 100vh;
   background: var(--tf-bg-page);

@@ -299,6 +299,51 @@ class AnalyticsController extends Controller
         ]);
     }
 
+    public function bestHours(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $sessions = TimeSession::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('ended_at')
+            ->get(['started_at', 'duration_seconds']);
+
+        $uniqueDays = [];
+        foreach ($sessions as $session) {
+            $uniqueDays[\Carbon\Carbon::parse($session->started_at)->toDateString()] = true;
+        }
+
+        $daysLogged = count($uniqueDays);
+        if ($daysLogged < 14) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'locked' => true,
+                    'days_needed' => 14,
+                    'days_logged' => $daysLogged,
+                ],
+            ]);
+        }
+
+        $grid = array_fill(0, 7, array_fill(0, 24, 0));
+
+        foreach ($sessions as $session) {
+            $dt = \Carbon\Carbon::parse($session->started_at);
+            // dayOfWeek: 0 = Sunday, 1 = Monday. We want 0 = Monday, 6 = Sunday.
+            $dayIndex = ($dt->dayOfWeek + 6) % 7; 
+            $hourIndex = $dt->hour;
+            $grid[$dayIndex][$hourIndex] += (int) $session->duration_seconds;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'locked' => false,
+                'grid' => $grid,
+            ],
+        ]);
+    }
+
     public function insights(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -357,6 +402,33 @@ class AnalyticsController extends Controller
                     'message' => "You've logged 0 hours on Sundays for 4 weeks. Is that intentional rest or avoidance?",
                 ];
             }
+        }
+
+        $nearestExam = \App\Models\Exam::where('user_id', $user->id)
+            ->where('exam_date', '>=', now()->toDateString())
+            ->orderBy('exam_date', 'asc')
+            ->first();
+
+        if ($nearestExam) {
+            $daysUntil = \Carbon\Carbon::parse($nearestExam->exam_date)->diffInDays(now()->startOfDay());
+            if ($daysUntil <= 7) {
+                $insights[] = [
+                    'type' => 'exam_approaching',
+                    'message' => "Your {$nearestExam->subject} exam is in {$daysUntil} " . ($daysUntil === 1 ? 'day' : 'days') . "! Consider prioritizing study sessions.",
+                ];
+            }
+        }
+
+        $todayOfWeek = strtolower(now()->format('l'));
+        $timetableBlocks = \App\Models\TimetableBlock::where('user_id', $user->id)
+            ->where('day_of_week', $todayOfWeek)
+            ->count();
+
+        if ($timetableBlocks >= 4) {
+            $insights[] = [
+                'type' => 'heavy_timetable',
+                'message' => "You have a heavy class schedule today ({$timetableBlocks} blocks). Don't forget to take short breaks!",
+            ];
         }
 
         return response()->json([

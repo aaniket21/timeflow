@@ -12,7 +12,7 @@ const props = defineProps({
 });
 
 const activeSection = ref('Profile');
-const sections = ['Profile', 'Appearance', 'Notifications', 'Pomodoro', 'Goals', 'Leaderboard', 'Account'];
+const sections = ['Profile', 'Preferences', 'Appearance', 'Notifications', 'Pomodoro', 'Goals', 'Leaderboard', 'Account'];
 
 const darkMode = ref(document.documentElement.classList.contains('dark'));
 
@@ -35,6 +35,10 @@ const profileForm = ref({
   email: '',
   timezone: '',
   avatar_url: '',
+});
+
+const preferencesForm = ref({
+  plan_auto_rollover: false,
 });
 
 const notificationsForm = ref({
@@ -67,6 +71,9 @@ const loadSettings = () => {
     email: user.email || '',
     timezone: user.timezone || 'Asia/Kolkata',
     avatar_url: user.avatar_url || '',
+  };
+  preferencesForm.value = {
+    plan_auto_rollover: Boolean(user.plan_auto_rollover),
   };
   notificationsForm.value = {
     notifications_enabled: Boolean(user.notifications_enabled),
@@ -109,6 +116,16 @@ const urlBase64ToUint8Array = (base64String) => {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+};
+
+const savePreferences = async () => {
+  try {
+    await axios.put('/api/settings/preferences', preferencesForm.value);
+    if (window.TimeflowToast) window.TimeflowToast.success('Preferences saved');
+  } catch (error) {
+    if (window.TimeflowToast) window.TimeflowToast.error('Failed to save preferences');
+    console.warn('Preferences update failed', error);
+  }
 };
 
 const saveNotifications = async () => {
@@ -258,6 +275,21 @@ onMounted(() => {
               </select>
             </div>
             <button class="primary-btn" type="button" @click="saveProfile">Save profile</button>
+          </div>
+
+          <div v-else-if="activeSection === 'Preferences'" class="tf-card">
+            <div class="panel-title">Preferences</div>
+            <div class="toggle-row">
+              <div>
+                <span>Plan Auto Rollover</span>
+                <div class="field-hint">Automatically carry over unfinished daily plan tasks to the next day.</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" v-model="preferencesForm.plan_auto_rollover" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <button class="primary-btn" type="button" @click="savePreferences">Save preferences</button>
           </div>
 
           <div v-else-if="activeSection === 'Appearance'" class="tf-card">
