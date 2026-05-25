@@ -25,6 +25,8 @@ RUN apt-get update && apt-get install -y \
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
+RUN echo "LimitRequestFieldSize 16380" >> /etc/apache2/apache2.conf \
+    && echo "LimitRequestLine 16380" >> /etc/apache2/apache2.conf
 
 # Update Apache Document Root to Laravel's public directory
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
