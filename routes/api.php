@@ -78,6 +78,13 @@ Route::middleware(['auth:sanctum', SetUserTimezone::class])->group(function () {
     Route::put('/settings/pomodoro', [SettingsController::class, 'updatePomodoro']);
     Route::get('/settings/export', [SettingsController::class, 'exportData']);
     Route::delete('/settings/account', [SettingsController::class, 'deleteAccount']);
+
+    Route::get('/notifications', function (Request $request) {
+        // Return user notifications, format expected by frontend
+        return response()->json([
+            'data' => $request->user()->notifications()->latest()->take(10)->get()
+        ]);
+    });
 });
 
 Route::middleware('auth:sanctum')->group(function () {

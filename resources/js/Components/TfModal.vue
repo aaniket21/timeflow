@@ -8,22 +8,24 @@ const emit = defineEmits(['close']);
 </script>
 
 <template>
-  <div v-if="isOpen" class="tf-modal-overlay" @click.self="emit('close')">
-    <div class="tf-modal-content">
-      <div class="tf-modal-header">
-        <h3 class="tf-modal-title">{{ title }}</h3>
-        <button class="tf-icon-button" type="button" aria-label="Close modal" @click="emit('close')">
-          <i class="ti ti-x" aria-hidden="true"></i>
-        </button>
-      </div>
-      <div class="tf-modal-body">
-        <slot />
-      </div>
-      <div v-if="$slots.footer" class="tf-modal-footer">
-        <slot name="footer" />
+  <Teleport to="body">
+    <div v-if="isOpen" class="tf-modal-overlay" @click.self="emit('close')">
+      <div class="tf-modal-content">
+        <div class="tf-modal-header">
+          <h3 class="tf-modal-title">{{ title }}</h3>
+          <button class="tf-icon-button" type="button" aria-label="Close modal" @click="emit('close')">
+            <i class="ti ti-x" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="tf-modal-body">
+          <slot />
+        </div>
+        <div v-if="$slots.footer" class="tf-modal-footer">
+          <slot name="footer" />
+        </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>

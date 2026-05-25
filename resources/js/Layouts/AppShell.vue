@@ -148,6 +148,7 @@ onMounted(() => {
   <div class="tf-shell">
     <TopBar 
       :xpTotal="xpTotal"
+      :streakCurrent="streakCurrent"
       :userInitials="userInitials"
       :notifications="notifications"
       :notifOpen="notifOpen"
@@ -172,19 +173,7 @@ onMounted(() => {
         </Link>
       </div>
 
-      <div class="tf-streak-box">
-        <div class="tf-streak-icon">🔥</div>
-        <div class="tf-streak-value">{{ streakCurrent }}</div>
-        <div class="tf-streak-label">day streak</div>
-        <div class="tf-streak-dots">
-          <span
-            v-for="(done, index) in streakWeekDays"
-            :key="index"
-            class="tf-streak-dot"
-            :class="{ on: done, now: index === todayDayIndex && !done }"
-          ></span>
-        </div>
-      </div>
+
 
       <button class="tf-logout-btn" type="button" @click="handleLogout">
         <i class="ti ti-logout" aria-hidden="true"></i>

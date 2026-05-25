@@ -26,7 +26,7 @@ const submitLogin = async () => {
       password: form.value.password,
       timezone: detectedTimezone,
     });
-    if (import.meta.env?.MODE !== 'test') {
+    if (import.meta.env.MODE !== 'test') {
       window.location.assign('/dashboard');
     }
   } catch (error) {

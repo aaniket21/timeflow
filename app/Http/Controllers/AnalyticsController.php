@@ -258,7 +258,7 @@ class AnalyticsController extends Controller
     {
         $user = $request->user();
         $endDate = Carbon::parse($request->query('end', now()->toDateString()))->endOfDay();
-        $startDate = $endDate->copy()->subDays(13)->startOfDay();
+        $startDate = $endDate->copy()->subDays(364)->startOfDay();
 
         $sessions = TimeSession::query()
             ->where('user_id', $user->id)
@@ -276,13 +276,13 @@ class AnalyticsController extends Controller
         $days = [];
         $cursor = $startDate->copy();
 
-        for ($i = 0; $i < 14; $i++) {
+        for ($i = 0; $i < 365; $i++) {
             $dayKey = $cursor->toDateString();
             $total = (int) ($dayTotals[$dayKey] ?? 0);
 
             $days[] = [
                 'date' => $dayKey,
-                'total_seconds' => $total,
+                'count' => $total,
                 'level' => $this->heatmapLevel($total),
             ];
 

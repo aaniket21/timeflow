@@ -20,7 +20,7 @@ const projectColor = ref('#7C5CFC');
 
 const handleTimezoneConfirm = async () => {
   try {
-    await axios.put('/api/settings/preferences', { timezone: detectedTimezone.value });
+    await axios.put('/api/settings/profile', { timezone: detectedTimezone.value });
     step.value = 2;
   } catch (error) {
     console.warn('Failed to save timezone', error);

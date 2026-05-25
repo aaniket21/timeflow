@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/vue3';
 
 const props = defineProps({
   xpTotal: { type: Number, default: 0 },
+  streakCurrent: { type: Number, default: 0 },
   userInitials: { type: String, default: 'TF' },
   notifications: { type: Number, default: 0 },
   notifOpen: { type: Boolean, default: false },
@@ -19,6 +20,7 @@ const emit = defineEmits(['toggle-dark-mode', 'toggle-notif']);
       <span class="tf-logo-text">TimeFlow</span>
     </Link>
     <div class="tf-topbar-right">
+      <div class="tf-streak-chip" title="Current Streak"><i class="ti ti-flame" aria-hidden="true"></i> <span>{{ streakCurrent }}</span></div>
       <div class="tf-xp-chip"><i class="ti ti-bolt" aria-hidden="true"></i> <span>{{ xpTotal }} XP</span></div>
       <button class="tf-icon-button" type="button" aria-label="Toggle dark mode" @click="emit('toggle-dark-mode')">
         <i class="ti ti-moon" aria-hidden="true"></i>
@@ -45,15 +47,34 @@ const emit = defineEmits(['toggle-dark-mode', 'toggle-notif']);
 <style scoped>
 /* These styles can remain in app.css or be scoped here. 
    Since they are currently in app.css we can rely on them, but we might want to hide logo text on very small screens. */
-@media (max-width: 400px) {
+@media (max-width: 500px) {
   .tf-logo-text {
     display: none;
   }
-  .tf-xp-chip span {
+  .tf-xp-chip span,
+  .tf-streak-chip span {
     display: none;
   }
-  .tf-xp-chip {
+  .tf-xp-chip,
+  .tf-streak-chip {
     padding: 5px 8px;
   }
+}
+
+.tf-streak-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 13px;
+  border-radius: 1249px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  color: var(--tf-amber);
+  background: rgba(245, 166, 35, 0.12);
+  border: 1px solid rgba(245, 166, 35, 0.22);
+}
+.tf-streak-chip i {
+  font-size: 16px;
 }
 </style>

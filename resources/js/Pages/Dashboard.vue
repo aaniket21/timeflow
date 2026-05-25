@@ -1,12 +1,12 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 import OnboardingWizard from '../Components/OnboardingWizard.vue';
 import { useTime } from '../composables/useTime';
 
-const { format, todayDate, currentHour, daysUntil, toTimestamp } = useTime();
+const { format, formatTime, todayDate, currentHour, daysUntil, toTimestamp } = useTime();
 
 const props = defineProps({
   navigation: {
@@ -21,9 +21,19 @@ const props = defineProps({
   timetable: Array,
 });
 
-function buildEmptyHeatmap() {
-  return Array.from({ length: 14 }, () => Array.from({ length: 6 }, () => 0));
-}
+const currentTime = ref(format(new Date().toISOString(), 'h:mm:ss A'));
+let clockInterval = null;
+
+onMounted(() => {
+  clockInterval = setInterval(() => {
+    currentTime.value = format(new Date().toISOString(), 'h:mm:ss A');
+  }, 1000); // update every second
+});
+
+onUnmounted(() => {
+  if (clockInterval) clearInterval(clockInterval);
+});
+
 
 const userProfile = ref({ name: '', daily_goal_hours: 6 });
 const dailyGoalHours = ref(6);
@@ -167,17 +177,60 @@ function formatDuration(seconds) {
   return `${h}:${m}`;
 }
 
+function buildEmptyHeatmap() {
+  return {
+    cols: Array.from({ length: 53 }, () => Array.from({ length: 7 }, () => null)),
+    monthLabels: []
+  };
+}
+
 function buildHeatmapGrid(days) {
   if (!Array.isArray(days) || days.length === 0) {
     return buildEmptyHeatmap();
   }
 
-  const normalized = days.slice(0, 14);
-  while (normalized.length < 14) {
-    normalized.push({ level: 0 });
+  const firstDate = new Date(days[0].date);
+  const firstDayOfWeek = firstDate.getDay(); // 0 is Sunday
+
+  const paddedDays = Array(firstDayOfWeek).fill(null).concat(days);
+
+  while (paddedDays.length % 7 !== 0) {
+    paddedDays.push(null);
   }
 
-  return normalized.map((day) => Array.from({ length: 6 }, () => Math.max(0, Math.min(4, Number(day.level) || 0))));
+  const cols = [];
+  const monthLabels = [];
+  let currentMonth = -1;
+
+  for (let i = 0; i < paddedDays.length; i += 7) {
+    const col = paddedDays.slice(i, i + 7);
+    cols.push(col);
+
+    const firstValidDay = col.find(d => d !== null);
+    if (firstValidDay) {
+      const date = new Date(firstValidDay.date);
+      if (date.getMonth() !== currentMonth) {
+        currentMonth = date.getMonth();
+        monthLabels.push({
+          label: date.toLocaleString('default', { month: 'short' }),
+          colIndex: cols.length - 1
+        });
+      }
+    }
+  }
+
+  return { cols, monthLabels };
+}
+
+function formatTooltip(cell) {
+  if (!cell || !cell.date) return '';
+  const total = Math.max(0, Number(cell.count) || 0);
+  const h = String(Math.floor(total / 3600)).padStart(2, '0');
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+  const s = String(total % 60).padStart(2, '0');
+  const durationStr = `${h}:${m}:${s}`;
+  const dateStr = format(cell.date, 'MMM D, YYYY');
+  return `${durationStr} spent on ${dateStr}`;
 }
 
 function startTimer(startedAt) {
@@ -457,7 +510,10 @@ onUnmounted(() => {
           <div class="page-title">{{ greetingText }}, {{ greetingName }} 👋</div>
           <div class="page-subtitle">Stay consistent and keep the streak alive.</div>
         </div>
-        <div class="tf-date-badge">{{ dateLabel }}</div>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div class="digital-clock" style="font-variant-numeric: tabular-nums; font-weight: 700; font-size: 17px; white-space: nowrap;">{{ currentTime }}</div>
+          <div class="tf-date-badge" style="white-space: nowrap;">{{ dateLabel }}</div>
+        </div>
       </div>
 
       <div v-if="exams.length" class="exam-block">
@@ -600,9 +656,35 @@ onUnmounted(() => {
           <div class="heatmap-title">Activity</div>
           <div class="heatmap-scale">Low - High</div>
         </div>
-        <div class="heatmap-grid">
-          <div v-for="(col, colIndex) in heatmap" :key="colIndex" class="heatmap-col">
-            <div v-for="(cell, cellIndex) in col" :key="cellIndex" class="heatmap-cell" :class="'level-' + cell"></div>
+        
+        <div class="heatmap-scroll-container" style="overflow-x: auto; padding-bottom: 5px;">
+          <div style="display: flex; flex-direction: column; min-width: max-content;">
+            <!-- Months header -->
+            <div class="heatmap-months" style="position: relative; height: 16px; margin-left: 30px;">
+              <div v-for="month in heatmap.monthLabels" :key="month.colIndex" 
+                   :style="{ position: 'absolute', left: (month.colIndex * 16) + 'px', fontSize: '10px', color: 'var(--tf-text-secondary)' }">
+                {{ month.label }}
+              </div>
+            </div>
+            
+            <div style="display: flex;">
+              <!-- Weekday labels -->
+              <div class="heatmap-weekdays" style="position: relative; width: 30px; flex-shrink: 0;">
+                <span style="position: absolute; top: 14px; font-size: 10px; color: var(--tf-text-secondary);">Mon</span>
+                <span style="position: absolute; top: 44px; font-size: 10px; color: var(--tf-text-secondary);">Wed</span>
+                <span style="position: absolute; top: 74px; font-size: 10px; color: var(--tf-text-secondary);">Fri</span>
+              </div>
+              
+              <!-- Grid -->
+              <div class="heatmap-grid" style="display: flex; gap: 4px;">
+                <div v-for="(col, colIndex) in heatmap.cols" :key="colIndex" class="heatmap-col">
+                  <div v-for="(cell, cellIndex) in col" :key="cellIndex" class="heatmap-cell" 
+                       :class="cell ? 'level-' + cell.level : ''"
+                       :style="cell ? {} : { visibility: 'hidden' }"
+                       :title="formatTooltip(cell)"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -666,6 +748,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 15px;
+  flex-wrap: wrap;
 }
 
 .page-title {
@@ -1104,6 +1187,8 @@ onUnmounted(() => {
 .heatmap-grid {
   display: flex;
   gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 5px;
 }
 
 .heatmap-col {
@@ -1113,15 +1198,16 @@ onUnmounted(() => {
 }
 
 .heatmap-cell {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   border-radius: 3px;
-  background: rgba(80, 60, 20, 0.1);
+  background: var(--tf-border-emphasis);
+  transition: background-color 0.2s ease;
 }
 
-.heatmap-cell.level-1 { background: rgba(124, 92, 252, 0.2); }
-.heatmap-cell.level-2 { background: rgba(124, 92, 252, 0.4); }
-.heatmap-cell.level-3 { background: rgba(124, 92, 252, 0.65); }
+.heatmap-cell.level-1 { background: rgba(124, 92, 252, 0.3); }
+.heatmap-cell.level-2 { background: rgba(124, 92, 252, 0.55); }
+.heatmap-cell.level-3 { background: rgba(124, 92, 252, 0.8); }
 .heatmap-cell.level-4 { background: var(--tf-violet); }
 
 .recent-header {

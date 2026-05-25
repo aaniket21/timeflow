@@ -5,13 +5,11 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { createApp, h } from 'vue';
 import TfToast from './Components/TfToast.vue';
 
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+
 createInertiaApp({
 	title: (title) => (title ? `${title} - TimeFlow` : 'TimeFlow'),
-	resolve: (name) => {
-		const pages = import.meta.glob('./Pages/**/*.vue', { eager: true });
-
-		return pages[`./Pages/${name}.vue`];
-	},
+	resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
 	setup({ el, App, props, plugin }) {
 		const app = createApp({
 			render: () => h('div', [h(App, props), h(TfToast)]),

@@ -216,7 +216,7 @@ const stopSession = async () => {
       });
       localStorage.removeItem(`tf_notes_${activeSessionId.value}`);
       if (res.data?.meta?.xp_gained > 0 && window.TimeflowToast) {
-        window.TimeflowToast.showXP(res.data.meta.xp_gained, 'Session saved');
+        window.TimeflowToast.success('Session saved', res.data.meta.xp_gained);
       }
     } catch (e) {
       console.warn('Stop session failed', e);
@@ -328,7 +328,7 @@ const startTicking = () => {
           if (activeSessionId.value) {
             axios.post(`/api/sessions/${activeSessionId.value}/pomodoro-interval`).then(res => {
                if (window.TimeflowToast && res.data?.meta?.xp_gained > 0) {
-                  window.TimeflowToast.showXP(res.data.meta.xp_gained, 'Pomodoro interval completed!');
+                  window.TimeflowToast.success('Pomodoro interval completed!', res.data.meta.xp_gained);
                }
             }).catch(e => console.warn('Pomodoro interval API failed', e));
           }
@@ -647,7 +647,6 @@ onUnmounted(() => { stopTicking(); });
 .timer-page {
   min-height: 100vh;
   background: var(--tf-bg-page);
-  padding: 14px;
   color: var(--tf-text-primary);
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
 }
