@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\App;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,6 +12,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(DemoSeeder::class);
+        // Always run the AdminSeeder to ensure an admin exists in production
+        $this->call(AdminSeeder::class);
+
+        // Only run the DemoSeeder in local/development environments
+        if (!App::environment('production')) {
+            $this->call(DemoSeeder::class);
+        }
     }
 }
