@@ -18,3 +18,7 @@ Schedule::command('timeflow:check-streaks')->dailyAt('01:00')->withoutOverlappin
 
 // P4.7 - Send push notifications for streak risk at 8 PM user's timezone
 Schedule::command('timeflow:streak-risk')->hourly()->withoutOverlapping();
+
+// Daily backups
+Schedule::command('backup:clean')->daily()->at('01:00')->withoutOverlapping();
+Schedule::command('backup:run')->daily()->at('01:30')->withoutOverlapping();

@@ -42,6 +42,8 @@ if (! function_exists('buildNavigation')) {
     }
 }
 
+Route::get('/health', \App\Http\Controllers\HealthController::class);
+
 // --- Guest routes (login, register, etc.) ---
 
 Route::get('/', function () {

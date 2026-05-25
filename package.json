@@ -20,6 +20,7 @@
     },
     "dependencies": {
         "@inertiajs/vue3": "^3.1.1",
+        "@sentry/vue": "^10.53.1",
         "@vitejs/plugin-vue": "^6.0.7",
         "dayjs": "^1.11.20",
         "vue": "^3.5.34"

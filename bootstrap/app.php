@@ -25,6 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
         FortifyServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        $middleware->throttleApi();
+
         // PRD §6 — SetUserTimezone registered on BOTH web and api groups
         $middleware->api(prepend: [
             EnsureFrontendRequestsAreStateful::class,
