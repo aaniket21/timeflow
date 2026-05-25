@@ -26,7 +26,19 @@ const submitRegister = async () => {
 
   isSubmitting.value = true;
   try {
-    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    let detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    
+    // Map deprecated timezone aliases to modern equivalents
+    const deprecatedTimezones = {
+      'Asia/Calcutta': 'Asia/Kolkata',
+      'Asia/Katmandu': 'Asia/Kathmandu',
+      'Asia/Rangoon': 'Asia/Yangon',
+      'Asia/Saigon': 'Asia/Ho_Chi_Minh',
+      'Asia/Macao': 'Asia/Macau',
+      'Africa/Asmera': 'Africa/Asmara'
+    };
+    detectedTimezone = deprecatedTimezones[detectedTimezone] || detectedTimezone;
+
     await axios.get('/sanctum/csrf-cookie');
     await axios.post('/register', {
       name: form.value.name,

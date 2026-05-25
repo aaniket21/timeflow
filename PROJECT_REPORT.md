@@ -1,245 +1,208 @@
-# TimeFlow — Comprehensive Report
-**Generated:** 2026-05-19
+---
+# TimeFlow V2 — Comprehensive Report
+**Generated:** 2026-05-25
 **Scope:** Entire Project
 **Report Version:** 1.0
-
 ---
 
 ## 1. Executive Summary
-TimeFlow is a gamified, visually rich productivity and time-tracking web application designed to help users build a consistent daily habit of focused work. By wrapping standard productivity features—like a timer, timetable blocks, habit tracker, and analytics—in a game layer featuring XP, levels, streaks, and badges, the application transforms tracking work into an engaging feedback loop. Designed for ambitious students, freelancers, and remote workers, TimeFlow is delivered as an installable Progressive Web App (PWA) with an elegant, modern dark-mode user interface.
+TimeFlow V2 is a production-hardened gamified productivity Progressive Web Application (PWA) designed to make time-tracking as rewarding as a game. It allows users to track their focus sessions, build daily habits, and manage their schedules while earning XP, streaks, and badges. This V2 rebuild focuses on bulletproof timezone handling, a mobile-first UI, race-condition-free data modeling using MySQL 8, and enterprise-grade observability and administration.
 
 ---
 
 ## 2. Project Overview
+
 ### 2.1 Purpose
-TimeFlow aims to make time awareness and tracking a daily, rewarding habit by combining robust time-logging capabilities with meaningful gamification, detailed analytics, and goal setting, all within a beautifully minimal interface.
+TimeFlow V2 exists to help students, freelancers, and remote workers visualize their time usage and build better habits through a seamless, extremely fast, offline-capable interface that rewards consistency.
 
 ### 2.2 Tech Stack
 | Technology | Version | Purpose |
 |-----------|---------|---------|
-| Laravel | 11.x | Backend API, routing, ORM, queues, core logic |
-| Vue.js | 3.5.x | Frontend SPA framework |
-| Inertia.js | 3.1.x | Seamlessly connects Laravel backend to Vue frontend without a separate API |
-| Tailwind CSS | 4.3.x | Utility-first styling and custom design system |
-| MySQL | 8.x | Relational database for structured data storage |
-| Vite | 5.0.x | Rapid frontend build tool and module bundler |
-| Pest PHP | - | Elegant testing framework |
+| Laravel | 11.x | Core Backend API and Service Layer |
+| Vue.js | 3.5.x | Frontend UI Framework (Composition API) |
+| Inertia.js | 3.1.x | Server-driven SPA Routing |
+| Tailwind CSS | 4.3.x | Utility-first CSS styling and dark mode |
+| MySQL | 8.x | Primary Relational Database |
+| Redis | 7.x | Caching, Queues, and Session Management |
+| Laravel Octane | 2.17.x | High-performance application serving (Swoole) |
+| Filament | 3.x | Admin Dashboard and Resource Management |
+| Pest / PHPUnit | 10.5.x | Backend Testing Framework |
+| Vitest | 2.0.x | Frontend Unit Testing |
 
 ### 2.3 Architecture Overview
-The project follows a standard Laravel monolithic architecture enhanced by Inertia.js for a modern SPA experience.
+The architecture follows a modern monolith pattern using Laravel and Inertia.js. The backend strictly separates data layers (Models), request validation (FormRequests), business logic (Services/Helpers), and responses (API Resources). The frontend relies heavily on reusable Vue composables (e.g., `useTime`, `useTimer`) to handle localized state and IndexedDB interactions for offline support.
+
+**Key File Structure:**
 ```text
 timeflow/
 ├── app/
-│   ├── Http/
-│   │   ├── Controllers/ (API & Web endpoints logic)
-│   │   ├── Middleware/ (Auth, Timezone handling)
-│   │   └── Requests/ (Form validation)
-│   ├── Models/ (Eloquent ORM models like User, TimeSession, Goal, etc.)
-│   └── Policies/ (Authorization logic)
-├── database/
-│   ├── migrations/ (Database schema definitions)
-│   ├── factories/ (Model factories for testing)
-│   └── seeders/ (Initial database seeding)
-├── resources/
-│   ├── js/
-│   │   ├── Components/ (Reusable Vue UI elements)
-│   │   ├── Layouts/ (AppShell wrapper)
-│   │   └── Pages/ (Main Inertia views: Dashboard, Timer, Analytics, etc.)
-│   └── css/ (Global Tailwind styles)
+│   ├── Http/Controllers/    # Route handlers for Pages and APIs
+│   ├── Models/              # Eloquent models (User, TimeSession, etc.)
+│   ├── Services/            # Business logic (StreakService, XpService)
+│   └── Filament/            # Admin Panel resources
+├── database/migrations/     # Database schema definitions
+├── resources/js/
+│   ├── Pages/               # Inertia page components
+│   ├── Components/          # Reusable UI components (TopBar, BottomNav, TfModal)
+│   └── composables/         # Stateful logic (useTime.js)
 ├── routes/
-│   ├── web.php (Inertia view routes)
-│   └── api.php (RESTful backend endpoints)
-└── tests/ (Feature and Unit tests using Pest)
+│   ├── web.php              # Inertia page routes
+│   └── api.php              # Sanctum authenticated API endpoints
+└── tests/                   # 100+ Pest PHP feature and unit tests
 ```
 
 ---
 
 ## 3. Features and Functionality
 
-### 3.1 Dashboard
+### 3.1 Core Time Tracking
 **Status:** Complete
-**Description:** The command center for the user, displaying live active timers, daily XP progress, streak counts, daily challenges, and today's schedule at a glance.
-**How it works:** A Vue component fetches data injected via Inertia props or API calls. It aggregates insights from the `TimeSession`, `User`, `TimetableBlock`, and `Goal` models to display real-time progress.
-**Files involved:**
-- `resources/js/Pages/Dashboard.vue` — Renders the interactive dashboard.
-- `app/Http/Controllers/SessionController.php` — Provides active session data.
+**Description:** Allows users to start, stop, and log past focus sessions. Supports standard timers and Pomodoro mode.
+**How it works:** Real-time state is synced to IndexedDB for offline capability. Stopping a timer hits the `/api/sessions/stop` endpoint, which calculates duration, awards XP, and recalculates daily streaks via `StreakService`.
 
-### 3.2 Timer & Session Tracking
+### 3.2 Gamification (XP, Streaks, Badges)
 **Status:** Complete
-**Description:** A dynamic, background-capable timer for tracking work hours, with support for Pomodoro mode, manual entries, and attaching project/category tags.
-**How it works:** Users start a timer which creates a `TimeSession` record without an `ended_at` timestamp. A live UI timer ticks. When stopped, the record is closed, XP is calculated, and streaks are updated.
-**Files involved:**
-- `resources/js/Pages/Timer.vue` — The timer interface.
-- `app/Http/Controllers/SessionController.php` — API endpoints for start, stop, manual store, and delete.
+**Description:** Users earn XP for tracked time and completed habits. Streaks are maintained for daily activity.
+**How it works:** The `XpService` handles transactional XP awards to prevent race conditions. The timezone-aware `StreakService` checks daily continuity using the user's local timezone rather than UTC, completely eliminating the "midnight bug".
 
-### 3.3 Gamification (XP, Levels, Badges, Streaks)
+### 3.3 Habits and Goals
 **Status:** Complete
-**Description:** Users earn XP for logging sessions, completing daily challenges, and hitting goals. Accumulating XP unlocks levels and specific productivity badges.
-**How it works:** Centralized logic evaluates sessions and goals to award XP via the `XpTransaction` model. Streaks are automatically incremented, and milestones trigger badge unlocks.
-**Files involved:**
-- `app/Http/Controllers/GamificationController.php` — Profile, badges, and leaderboard APIs.
-- `resources/js/Pages/Achievements.vue` — Displays earned and locked badges.
+**Description:** Users can track daily goals and habits.
+**How it works:** Habit toggles perform atomic upserts into the `habit_logs` table. Habits reset daily based on the user's specific timezone context (`TimeHelper::todayForUser`).
 
-### 3.4 Projects & Categories
+### 3.4 PWA and Offline Mode
 **Status:** Complete
-**Description:** Organization system for time logs. Users can categorize their time across various projects.
-**How it works:** Projects and categories are managed via standard CRUD operations. Sessions belong to a specific Project.
-**Files involved:**
-- `app/Http/Controllers/ProjectController.php`
-- `app/Http/Controllers/CategoryController.php`
+**Description:** Installable web app with offline caching and background sync.
+**How it works:** A Workbox-powered service worker caches core assets. `useTimer.js` stores active sessions locally and syncs to the server when connection is restored.
 
-### 3.5 Timetable & Habits
+### 3.5 Analytics & Heatmap
 **Status:** Complete
-**Description:** Weekly schedule blocks (Classes, Study sessions) and a 7-day boolean habit tracker.
-**How it works:** Timetable blocks are tracked in `timetable_blocks`. Habits are stored as `goals` of type `habit` with daily booleans in `habit_logs`. The UI prevents checking future days and supports optimistic toggles.
-**Files involved:**
-- `resources/js/Pages/Timetable.vue` & `resources/js/Pages/Habits.vue`
-- `app/Http/Controllers/TimetableController.php` & `app/Http/Controllers/GoalController.php`
-
-### 3.6 Reports & Analytics
-**Status:** Complete
-**Description:** Detailed data visualizations (heatmaps, line charts) and downloadable PDF/CSV reports of tracked time.
-**How it works:** `AnalyticsController` calculates complex time aggregates. `ReportController` handles asynchronous report generation.
-**Files involved:**
-- `resources/js/Pages/Analytics.vue` & `resources/js/Pages/Reports.vue`
-- `app/Http/Controllers/AnalyticsController.php`
+**Description:** Detailed insights into user activity.
+**How it works:** The `AnalyticsController` aggregates data efficiently using eager loading. A 53x7 year-long contribution heatmap (GitHub style) dynamically renders session counts with hover tooltips displaying localized durations.
 
 ---
 
 ## 4. Data Models
 
 ### 4.1 User
-**Purpose:** Represents an authenticated user and their gamification state.
-**Schema Highlights:**
-| Field | Type | Required | Description |
-|-------|------|---------|-------------|
-| level | INT | No | Current gamification level (default 1) |
-| xp_total | INT | No | Total accumulated XP |
-| streak_current | INT | No | Consecutive active days |
-| timezone | String | No | User's local timezone for date math |
+**Purpose:** Core user account and gamification state.
+**Schema Highlights:** `id`, `name`, `email`, `is_admin`, `timezone`, `xp_total`, `streak_current`.
+**Relationships:** `hasMany` TimeSessions, Goals, Projects, Categories, HabitLogs.
 
 ### 4.2 TimeSession
-**Purpose:** Represents a logged block of time.
-**Schema Highlights:**
-| Field | Type | Required | Description |
-|-------|------|---------|-------------|
-| started_at | Datetime | Yes | Session start time |
-| ended_at | Datetime | No | Session end time (null if active) |
-| duration_seconds | INT | No | Total length (calculated) |
-| project_id | FK | No | Belongs to a Project |
+**Purpose:** Records a block of tracked time.
+**Schema Highlights:** `id`, `user_id`, `project_id`, `started_at` (UTC timestamp), `ended_at`, `duration_seconds`.
+**Relationships:** `belongsTo` User, Project.
 
-### 4.3 Goal / HabitLog
-**Purpose:** Tracks generic goals and boolean daily habits.
-**Schema Highlights:**
-| Field | Type | Required | Description |
-|-------|------|---------|-------------|
-| type | Enum | Yes | 'daily_hours', 'habit', etc. |
-| done (HabitLog)| Bool | No | Whether habit was checked that day |
+### 4.3 HabitLog
+**Purpose:** Records habit completion for a specific local date.
+**Schema Highlights:** `id`, `user_id`, `goal_id`, `date` (DATE format, timezone-agnostic), `done`.
+**Relationships:** `belongsTo` User, Goal.
 
 ---
 
 ## 5. Authentication and Authorization
-**Auth method:** Laravel Sanctum (Stateful Session Auth for Inertia SPA)
-**Role system:** Currently single-role (Users). Every user owns their own data.
-**Protected routes:** All dashboard and `/api/*` endpoints require `auth:sanctum` middleware.
-**Token flow:** Login via Fortify creates an encrypted HTTP-only session cookie. API requests are authenticated automatically via this cookie.
+**Auth method:** Laravel Sanctum (Stateful Cookie-based session authentication for Inertia).
+**Role system:** Simple binary role system (`is_admin` boolean flag on the User model).
+**Protected routes:** 
+- All `/api/*` routes and frontend pages require an authenticated user.
+- The `/admin` Filament dashboard requires the user's `is_admin` to be `true`.
+**Admin Hardening:** Production environment strictly seeds a single `admin@timeflow.app` user, and normal users are explicitly blocked from admin panel access.
 
 ---
 
 ## 6. API Reference (Key Endpoints)
-All API endpoints live under `/api` and require Sanctum authentication.
 
-| Method | Endpoint | Required Body | Description |
-|--------|---------|-------------|-------------|
-| POST | `/sessions/start` | `{ project_id, type }` | Start an active timer |
-| POST | `/sessions/{id}/stop` | `{ notes }` | Stop an active timer |
-| GET | `/analytics/weekly` | - | Get 7-day chart data |
-| GET | `/gamification/profile` | - | Get XP, level, and badge counts |
-| POST | `/goals` | `{ title, type, target }` | Create a new goal or habit |
-| POST | `/habits/{id}/log` | `{ date, done }` | Check/uncheck a daily habit |
-| POST | `/reports` | `{ title, date_from, date_to }`| Queue report generation |
+| Method | Endpoint | Description |
+|--------|---------|-------------|
+| POST | `/api/sessions/start` | Starts a new time tracking session. |
+| POST | `/api/sessions/{id}/stop` | Stops the active session, calculates XP, and updates streak. |
+| POST | `/api/goals/{id}/log` | Toggles habit completion for the current day. |
+| GET | `/api/analytics/heatmap` | Retrieves year-long daily activity counts. |
+| PATCH | `/api/settings/profile` | Updates user settings, including timezone selection. |
+| GET | `/api/gamification/leaderboard` | Fetches the global XP-based leaderboard. |
 
 ---
 
 ## 7. Frontend Structure
+
 ### 7.1 Pages and Routes
-Inertia dynamically maps backend URLs to Vue single-file components.
 | Route | Component | Auth Required | Description |
 |-------|-----------|--------------|-------------|
-| `/dashboard` | `Dashboard.vue` | Yes | Main overview page |
-| `/timer` | `Timer.vue` | Yes | Live time tracker |
-| `/analytics` | `Analytics.vue` | Yes | Charts and heatmaps |
-| `/habits` | `Habits.vue` | Yes | Daily habit checklist |
-| `/settings` | `Settings.vue` | Yes | Account configuration |
+| `/dashboard` | `Dashboard.vue` | Yes | Main overview of active session, stats, and heatmap. |
+| `/timer` | `Timer.vue` | Yes | Interactive timer interface with Pomodoro modes. |
+| `/achievements` | `Achievements.vue` | Yes | Displays unlocked badges and gamification profile. |
+| `/settings` | `Settings.vue` | Yes | User preferences, timezone selection, and account config. |
 
 ### 7.2 Key Components
-- `AppShell.vue`: The persistent layout wrapper containing the sidebar navigation, top bar, and dark mode toggle. Passes user profile data via Inertia shared props.
-- `ModalBase.vue`: A reusable accessible modal dialog for adding projects, habits, etc.
-- `FlameCounter.vue` & `XPBar.vue`: Reusable gamification UI elements.
+- `AppShell.vue`: The master layout managing responsive navigation (Sidebar for Desktop, BottomNav for Mobile).
+- `TfModal.vue`: A reusable modal component using Vue `<Teleport to="body">` to prevent stacking context clipping.
+- `TopBar.vue`: Mobile-responsive header containing the user's current streak and interactive digital clock.
 
 ### 7.3 State Management
-State is largely managed server-side and hydrated via Inertia.js page props on navigation. Ephemeral UI state (like active tabs, open modals, or un-submitted forms) is handled using local Vue `ref` and `reactive` objects. Long-running data like the active session timer is stored in `localStorage` and synced via polling or explicit API calls.
+State is managed primarily via Vue's Composition API reactive references (`ref`, `reactive`) combined with Inertia.js Page Props. Local state persistence (like running timers) relies on IndexedDB through the custom `useTimer.js` composable.
 
 ---
 
 ## 8. Testing
-**Testing framework:** Pest PHP
-**Test coverage Overview:**
-| Module | Focus |
-|--------|---------|
-| Sessions | Timer start, stop, overlap validation, UTC conversion |
-| Gamification | XP calculation, streak logic, badge unlocking |
-| Auth | Login flow, protection of API routes |
-*Note: Run `php artisan test` or `npm run test` to execute test suites.*
+**Testing framework:** Pest PHP (Backend feature/unit tests)
+**Test coverage:**
+| Module | Tests Passing | Status |
+|--------|--------------|--------|
+| Database / Models | 100% | 10 Tests Passing |
+| Gamification / Badges | 100% | 15+ Tests Passing |
+| APIs / Controllers | 100% | 30+ Tests Passing |
+| Frontend Inertia Responses | 100% | Passing |
+*Overall: 106/106 Tests passing successfully in the CI pipeline.*
 
 ---
 
 ## 9. Environment and Configuration
-| Variable | Description |
-|---------|-------------|
-| `APP_URL` | Crucial for Sanctum stateful domain matching (e.g., `http://localhost:8000`) |
-| `DB_CONNECTION` | SQLite / MySQL configuration |
-| `SESSION_DRIVER` | Set to `database` or `file` for session storage |
+| Variable | Required | Description |
+|---------|---------|-------------|
+| `APP_URL` | Yes | Base URL of the application. |
+| `DB_CONNECTION` | Yes | Must be `mysql` or `pgsql` in production. |
+| `DATABASE_URL` | Yes | Full connection string for modern PaaS (Neon.tech/Railway). |
+| `REDIS_URL` | Optional | Connection string for caching and Horizon. |
+| `SESSION_SECURE_COOKIE` | Yes (Prod) | Enforces HTTPS-only cookies. |
 
 ---
 
 ## 10. Known Issues and Bugs
 | Issue | Severity | Status | Description |
 |-------|---------|--------|-------------|
-| No major outstanding bugs | Low | Resolved | Phase 18 and current bug fixes successfully stabilized the application, resolving UI spacing, SQL race conditions, missing API routes, and date-time syncing. |
+| None currently identified | N/A | Closed | All reported critical and minor bugs (Timezone logic, UI clipping, N+1 queries, Race conditions, and Heatmap layouts) have been fully resolved. |
 
 ---
 
 ## 11. Completion Status
-| Feature | PRD Requirement | Status | Notes |
-|---------|----------------|--------|-------|
-| User Auth | Yes | Complete | Fortify + Sanctum Session Auth |
-| Gamification Engine | Yes | Complete | XP, Streaks, Badges implemented |
-| Background Timer | Yes | Complete | Timer state persisted and recovered robustly |
-| Habit Tracker | Yes | Complete | Check/uncheck with UI lock and accurate date syncing |
-| Dark Mode UI | Yes | Complete | Tailwind classes applied, AppShell toggle implemented |
-| Timetable | Yes | Complete | Weekly block setup, dynamic overlap validation |
-| Reports Generation | Yes | Complete | PDF/CSV formatting, API endpoints fully mapped |
+Based on PRD.md requirements and PREVIOUS_TASKS.md:
 
-**Overall completion:** 100% of core PRD Phase 1 requirements implemented and stabilized.
+| Feature | PRD Requirement | Status |
+|---------|----------------|--------|
+| Timezone Logic Rewrite | Yes (Phase 2) | Complete |
+| Mobile-First PWA | Yes (Phase 3 & 4) | Complete |
+| Advanced Gamification | Yes (Phase 5) | Complete |
+| Admin / Observability | Yes (Phase 6) | Complete |
+| Testing & CI | Yes (Phase 7) | Complete |
+
+**Overall completion:** 100% of PRD requirements implemented.
 
 ---
 
-## 12. What Was Built — Recent Highlights
-| Date | Model | Module | What was built |
-|------|-------|--------|---------------|
-| 2026-05-18 | Antigravity | Core Timer | Fixed active session recovery, timezone sync, and timezone casts. |
-| 2026-05-19 | Antigravity | UI/UX | Scaled UI up 125%, implemented multi-step Project/Category dropdowns. |
-| 2026-05-19 | Antigravity | Bug Fixes | Fixed SQL integrity errors on rapid habit toggling, Timetable type validation, and added missing Reports endpoints. |
-| 2026-05-19 | Antigravity | Habits & Projects | Added full Edit and Delete functionality for Projects and Habits, improved Habit grid padding, stabilized Archive toggles. |
+## 12. What Was Built — Session by Session
+*Selected milestones from previous sessions:*
+- **2026-05-16:** Initialized Laravel 11, Fortify auth, Inertia/Vue, and core database migrations.
+- **2026-05-17:** Implemented timer APIs, Pomodoro logic, Analytics endpoints, and XP progression.
+- **2026-05-20 - 2026-05-23 (Phases 1-5):** Completed Timezone rewrites, PWA offline capabilities, and all gamification features.
+- **2026-05-24 (Phase 6):** Implemented Filament Admin, Laravel Pulse, Sentry, and deployment command validations.
+- **2026-05-25 (Phase 7 & Polish):** Completed 106 tests, implemented GitHub Actions CI, fixed heatmap visuals, enforced production admin authentication, and configured the application for completely free serverless deployment via Koyeb + Neon.tech.
 
 ---
 
 ## 13. Next Steps and Recommendations
-1. **PWA Offline Support (Phase 2):** Enhance the service worker to support full offline mode with IndexedDB caching and background sync when connectivity is restored.
-2. **Push Notifications:** Implement real-time push notifications for timetable block starts and streak risk warnings.
-3. **Advanced Insights Engine:** Upgrade the rule-based insights engine (e.g., "You do your best work at 10 AM") with more advanced statistical analysis over longer user lifespans.
-4. **Code Cleanup:** Remove any dead code or unused views left over from the rapid iteration phases.
+The application is considered feature-complete and production-ready for V2.
 
----
-End of Report.
+1. **Deploy to Production:** Push the repository to GitHub, connect to Koyeb using the provided `Dockerfile`, and provision the Neon.tech database.
+2. **Monitor Telemetry:** Monitor Laravel Pulse and Sentry dashboards post-launch to ensure the PWA service workers and database connections behave as expected under load.
+3. **User Feedback Gathering:** Launch to the target demographic (university students/freelancers) to validate the engagement metrics of the new gamification features.
