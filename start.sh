@@ -12,6 +12,7 @@ chmod -R 775 /var/www/html/bootstrap/cache
 
 # Run migrations
 php artisan migrate --force
+php artisan db:seed --class=AdminSeeder --force
 
 # Now cache after everything is ready
 php artisan config:cache
