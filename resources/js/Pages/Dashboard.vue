@@ -707,7 +707,7 @@ onUnmounted(() => {
 
 .grid-two {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: 1fr;
   gap: 13px;
   margin-top: 15px;
 }
@@ -874,7 +874,7 @@ onUnmounted(() => {
 
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: 1fr;
   gap: 13px;
   margin-top: 15px;
 }
@@ -1024,7 +1024,7 @@ onUnmounted(() => {
 
 .quick-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
@@ -1168,8 +1168,19 @@ onUnmounted(() => {
   background: rgba(80, 60, 20, 0.1);
 }
 
+.action-btn {
+  height: 44px;
+  padding: 0 13px;
+  border-radius: 10px;
+  border: 1px solid var(--tf-border-default);
+  background: transparent;
+  font-size: 14px;
+  color: var(--tf-text-secondary);
+  cursor: pointer;
+}
+
 .outline-btn {
-  height: 38px;
+  height: 44px;
   padding: 0 13px;
   border-radius: 10px;
   border: 1px solid var(--tf-border-default);
@@ -1185,9 +1196,18 @@ onUnmounted(() => {
   border-radius: 50%;
 }
 
-@media (max-width: 1125px) {
+@media (min-width: 768px) {
+  .grid-two {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  .stats-row {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+@media (min-width: 1125px) {
   .quick-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 </style>

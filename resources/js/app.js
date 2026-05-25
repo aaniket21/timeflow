@@ -3,7 +3,7 @@ import '../css/app.css';
 
 import { createInertiaApp } from '@inertiajs/vue3';
 import { createApp, h } from 'vue';
-import ToastNotification from './Components/ToastNotification.vue';
+import TfToast from './Components/TfToast.vue';
 
 createInertiaApp({
 	title: (title) => (title ? `${title} - TimeFlow` : 'TimeFlow'),
@@ -14,7 +14,7 @@ createInertiaApp({
 	},
 	setup({ el, App, props, plugin }) {
 		const app = createApp({
-			render: () => h('div', [h(App, props), h(ToastNotification)]),
+			render: () => h('div', [h(App, props), h(TfToast)]),
 		});
 		app.use(plugin);
 		app.mount(el);

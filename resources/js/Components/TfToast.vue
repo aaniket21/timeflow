@@ -4,9 +4,9 @@ import { onMounted, ref } from 'vue';
 const toasts = ref([]);
 let nextId = 0;
 
-const addToast = (message, type = 'info', duration = 4000) => {
+const addToast = (message, type = 'info', duration = 4000, xp = 0) => {
   const id = nextId++;
-  toasts.value.push({ id, message, type, leaving: false });
+  toasts.value.push({ id, message, type, leaving: false, xp });
 
   if (duration > 0) {
     setTimeout(() => removeToast(id), duration);
@@ -26,7 +26,7 @@ const removeToast = (id) => {
 onMounted(() => {
   window.TimeflowToast = {
     show: addToast,
-    success: (msg) => addToast(msg, 'success'),
+    success: (msg, xp = 0) => addToast(msg, 'success', 4000, xp),
     error: (msg) => addToast(msg, 'error'),
     warning: (msg) => addToast(msg, 'warning'),
     info: (msg) => addToast(msg, 'info'),
@@ -53,6 +53,7 @@ const typeColors = {
       >
         <span class="toast-strip" :style="{ background: typeColors[toast.type] || typeColors.info }"></span>
         <span class="toast-message">{{ toast.message }}</span>
+        <span v-if="toast.xp > 0" class="xp-badge">+{{ toast.xp }} XP</span>
         <button class="toast-close" type="button" @click="removeToast(toast.id)" aria-label="Dismiss">
           <i class="ti ti-x" aria-hidden="true"></i>
         </button>
@@ -107,8 +108,8 @@ const typeColors = {
 }
 
 .toast-close {
-  width: 25px;
-  height: 25px;
+  width: 44px;
+  height: 44px;
   border: none;
   background: transparent;
   color: var(--tf-text-hint);
@@ -145,5 +146,23 @@ const typeColors = {
     opacity: 0;
     transform: translateX(25px);
   }
+}
+
+.xp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(124, 92, 252, 0.15);
+  color: var(--tf-violet);
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  animation: xp-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes xp-bounce {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 </style>

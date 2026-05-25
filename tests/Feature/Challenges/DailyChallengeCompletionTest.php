@@ -26,7 +26,7 @@ class DailyChallengeCompletionTest extends TestCase
 
         $user = User::factory()->create();
         $user->forceFill([
-            'last_active_date' => now()->toDateString(),
+            'last_active_date' => \App\Helpers\TimeHelper::todayForUser($user),
             'streak_current' => 1,
             'streak_longest' => 1,
         ])->save();
@@ -46,7 +46,7 @@ class DailyChallengeCompletionTest extends TestCase
 
         $this->assertDatabaseHas('user_challenge_completions', [
             'user_id' => $user->id,
-            'completed_on' => now()->toDateString(),
+            'completed_on' => \App\Helpers\TimeHelper::todayForUser($user),
         ]);
 
         $this->assertDatabaseHas('xp_transactions', [

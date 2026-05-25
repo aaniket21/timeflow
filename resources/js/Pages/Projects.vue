@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { computed, onMounted, ref, watch } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
-import ModalBase from '../Components/ModalBase.vue';
+import TfModal from '../Components/TfModal.vue';
 import { useTime } from '../composables/useTime';
 
 const { relative, toTimestamp } = useTime();
@@ -211,7 +211,7 @@ const getProgress = (project) => {
         </div>
       </div>
 
-      <ModalBase :open="showCreateModal" title="New Project" @close="showCreateModal = false">
+      <TfModal :isOpen="showCreateModal" title="New Project" @close="showCreateModal = false">
         <div class="field">
           <label class="field-label">Project name</label>
           <input class="text-input" type="text" v-model="createForm.name" placeholder="e.g. Math Revision" />
@@ -232,9 +232,9 @@ const getProgress = (project) => {
           <button class="outline-btn" type="button" @click="showCreateModal = false">Cancel</button>
           <button class="primary-btn" type="button" @click="createProject">Create</button>
         </template>
-      </ModalBase>
+      </TfModal>
 
-      <ModalBase :open="showEditModal" title="Edit Project" @close="showEditModal = false">
+      <TfModal :isOpen="showEditModal" title="Edit Project" @close="showEditModal = false">
         <div class="field">
           <label class="field-label">Project name</label>
           <input class="text-input" type="text" v-model="editForm.name" placeholder="e.g. Math Revision" />
@@ -259,7 +259,7 @@ const getProgress = (project) => {
           <button class="outline-btn" type="button" @click="showEditModal = false">Cancel</button>
           <button class="primary-btn" type="button" @click="updateProject">Save</button>
         </template>
-      </ModalBase>
+      </TfModal>
     </AppShell>
   </div>
 </template>

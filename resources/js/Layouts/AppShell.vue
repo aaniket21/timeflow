@@ -1,8 +1,10 @@
 <script setup>
 import { Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useTime } from '../composables/useTime';
+import TopBar from '../Components/TopBar.vue';
+import BottomNav from '../Components/BottomNav.vue';
 
 const { dayOfWeekIndex, formatTime } = useTime();
 
@@ -108,33 +110,15 @@ onMounted(() => {
 
 <template>
   <div class="tf-shell">
-    <header class="tf-topbar">
-      <Link href="/dashboard" class="tf-logo">
-        <span class="tf-logo-orb"><i class="ti ti-clock" aria-hidden="true"></i></span>
-        TimeFlow
-      </Link>
-      <div class="tf-topbar-right">
-        <div class="tf-xp-chip"><i class="ti ti-bolt" aria-hidden="true"></i> {{ xpTotal }} XP</div>
-        <button class="tf-icon-button" type="button" aria-label="Toggle dark mode" @click="toggleDarkMode">
-          <i class="ti ti-moon" aria-hidden="true"></i>
-        </button>
-        <div class="tf-notif-wrapper">
-          <button class="tf-icon-button" type="button" aria-label="Notifications" @click="toggleNotif">
-            <i class="ti ti-bell" aria-hidden="true"></i>
-            <span v-if="notifications" class="tf-badge-dot" aria-hidden="true"></span>
-          </button>
-          <div v-if="notifOpen" class="tf-notif-panel">
-            <div class="tf-notif-header">Notifications</div>
-            <div v-if="notifList.length === 0" class="tf-notif-empty">No notifications</div>
-            <div v-for="notif in notifList" :key="notif.id" class="tf-notif-item" :class="{ unread: !notif.read }">
-              <div class="tf-notif-msg">{{ notif.message }}</div>
-              <div v-if="notif.time" class="tf-notif-time">{{ notif.time }}</div>
-            </div>
-          </div>
-        </div>
-        <Link href="/settings" class="tf-avatar">{{ userInitials }}</Link>
-      </div>
-    </header>
+    <TopBar 
+      :xpTotal="xpTotal"
+      :userInitials="userInitials"
+      :notifications="notifications"
+      :notifOpen="notifOpen"
+      :notifList="notifList"
+      @toggle-dark-mode="toggleDarkMode"
+      @toggle-notif="toggleNotif"
+    />
 
     <aside class="tf-sidebar">
       <div v-for="section in props.navigation.sections" :key="section.label" class="tf-nav-group">
@@ -175,5 +159,11 @@ onMounted(() => {
     <main class="tf-main">
       <slot />
     </main>
+
+    <BottomNav 
+      :navigation="props.navigation"
+      :routeMap="getRoute"
+      :liveTimer="true" 
+    />
   </div>
 </template>

@@ -307,24 +307,44 @@
 	}
 }
 
-@media (max-width: 1225px) {
+@media (min-width: 769px) and (max-width: 1225px) {
 	.tf-shell {
-		grid-template-columns: 1fr;
-		grid-template-rows: 60px auto 1fr;
+		grid-template-columns: 80px 1fr;
 	}
 
 	.tf-sidebar {
-		grid-column: 1 / -1;
-		flex-direction: row;
-		flex-wrap: wrap;
-		gap: 10px;
-		border-right: none;
-		border-bottom: 1px solid var(--tf-border-default);
+		padding: 15px 5px;
+		align-items: center;
 	}
 
-	.tf-streak-box {
-		width: 100%;
+	.tf-nav-section, .tf-streak-box, .tf-nav-item span, .tf-logout-btn span {
+		display: none;
 	}
+
+	.tf-nav-item {
+		justify-content: center;
+		width: 100%;
+		padding: 15px 0;
+	}
+    
+    .tf-nav-item i {
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+	.tf-shell {
+		grid-template-columns: 1fr;
+		grid-template-rows: 60px 1fr;
+	}
+
+	.tf-sidebar {
+		display: none;
+	}
+    
+    .tf-main {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
 }
 
 /* ─── Logout Button ─── */

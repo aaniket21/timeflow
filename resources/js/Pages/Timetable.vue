@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
-import ModalBase from '../Components/ModalBase.vue';
+import TfModal from '../Components/TfModal.vue';
 import { useTime } from '../composables/useTime';
 
 const time = useTime();
@@ -185,7 +185,7 @@ const toggleDay = (dayNum) => {
         <div class="insight">{{ insightText }}</div>
       </div>
 
-      <ModalBase :open="showBlockModal" title="Add Timetable Block" @close="showBlockModal = false">
+      <TfModal :isOpen="showBlockModal" title="Add Timetable Block" @close="showBlockModal = false">
         <div class="field">
           <label class="field-label">Title</label>
           <input class="text-input" type="text" v-model="blockForm.title" placeholder="e.g. Physics Revision" />
@@ -217,7 +217,7 @@ const toggleDay = (dayNum) => {
           <button class="outline-btn" type="button" @click="showBlockModal = false">Cancel</button>
           <button class="primary-btn" type="button" @click="createBlock">Add</button>
         </template>
-      </ModalBase>
+      </TfModal>
     </AppShell>
   </div>
 </template>
@@ -270,7 +270,7 @@ const toggleDay = (dayNum) => {
 
 .timetable-grid {
   padding: 0;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .grid-header {
@@ -278,6 +278,7 @@ const toggleDay = (dayNum) => {
   grid-template-columns: 55px repeat(7, 1fr);
   background: var(--tf-bg-card-alt);
   border-bottom: 1px solid var(--tf-border-default);
+  min-width: 600px;
 }
 
 .day-header {
@@ -290,6 +291,7 @@ const toggleDay = (dayNum) => {
 
 .grid-body {
   position: relative;
+  min-width: 600px;
 }
 
 .time-row {

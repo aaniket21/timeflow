@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
+import TfModal from '../Components/TfModal.vue';
 import { useTime } from '../composables/useTime';
 
 const { format, formatTime, sessionGroupLabel, toTimestamp, dayjs } = useTime();
@@ -99,6 +100,18 @@ const loadProjects = async () => {
     }
   } catch (e) {
     console.warn('Projects fetch failed', e);
+  }
+};
+
+const initQuickStart = () => {
+  if (selectedProjectId.value) return; // already set by active session
+  const lastId = localStorage.getItem('tf_last_project_id');
+  if (lastId && projects.value.some(p => p.id === Number(lastId))) {
+    selectedProjectId.value = Number(lastId);
+    mainCategory.value = 'Project';
+  } else if (projects.value.length > 0) {
+    selectedProjectId.value = projects.value[0].id;
+    mainCategory.value = 'Project';
   }
 };
 
@@ -256,6 +269,7 @@ const stopTicking = () => {
 const selectProject = (id) => {
   selectedProjectId.value = id;
   projectMenuOpen.value = false;
+  localStorage.setItem('tf_last_project_id', id);
 };
 
 const setTab = (tab) => {
@@ -327,10 +341,14 @@ function formatDuration(sec) {
   return `${h}:${m}`;
 }
 
-onMounted(() => {
-  loadProjects();
-  loadSessionLog(true);
-  loadActiveSession();
+onMounted(async () => {
+  await loadProjects();
+  await loadActiveSession();
+  initQuickStart();
+  const savedTab = localStorage.getItem('tf_timer_tab');
+  if (savedTab) {
+    setTab(savedTab);
+  }
 });
 
 onUnmounted(() => { stopTicking(); });
@@ -369,47 +387,51 @@ onUnmounted(() => { stopTicking(); });
         <section v-if="activeTab === 'active'" class="tab-panel">
           <div class="tf-card select-card">
             <div class="tf-section-label">Category</div>
-            <button class="select-trigger" type="button" @click="mainCategoryMenuOpen = !mainCategoryMenuOpen">
+            <button class="select-trigger" type="button" @click="mainCategoryMenuOpen = true">
               <span class="select-value">
                 <span>{{ mainCategory }}</span>
               </span>
-              <i class="ti" :class="mainCategoryMenuOpen ? 'ti-chevron-up' : 'ti-chevron-down'" aria-hidden="true"></i>
+              <i class="ti ti-chevron-down" aria-hidden="true"></i>
             </button>
-            <div v-if="mainCategoryMenuOpen" class="select-menu">
-              <button class="select-item" type="button" @click="mainCategory = 'Focus Mode'; mainCategoryMenuOpen = false">Focus Mode</button>
-              <button class="select-item" type="button" @click="mainCategory = 'Project'; mainCategoryMenuOpen = false">Project</button>
-              <button class="select-item" type="button" @click="mainCategory = 'Activity'; mainCategoryMenuOpen = false">Activity</button>
-              <button class="select-item" type="button" @click="mainCategory = 'Other'; mainCategoryMenuOpen = false">Other</button>
-            </div>
+            <TfModal :isOpen="mainCategoryMenuOpen" title="Select Category" @close="mainCategoryMenuOpen = false">
+              <div class="modal-list">
+                <button class="modal-list-item" type="button" @click="mainCategory = 'Focus Mode'; mainCategoryMenuOpen = false">Focus Mode</button>
+                <button class="modal-list-item" type="button" @click="mainCategory = 'Project'; mainCategoryMenuOpen = false">Project</button>
+                <button class="modal-list-item" type="button" @click="mainCategory = 'Activity'; mainCategoryMenuOpen = false">Activity</button>
+                <button class="modal-list-item" type="button" @click="mainCategory = 'Other'; mainCategoryMenuOpen = false">Other</button>
+              </div>
+            </TfModal>
           </div>
 
           <div v-if="mainCategory === 'Project'" class="tf-card select-card" style="margin-top: 16px;">
             <div class="tf-section-label">Select Project</div>
-            <button class="select-trigger" type="button" @click="projectMenuOpen = !projectMenuOpen">
+            <button class="select-trigger" type="button" @click="projectMenuOpen = true">
               <span v-if="activeProject" class="select-value">
                 <span class="color-dot" :class="'dot-' + activeProject.color"></span>
                 <span>{{ activeProject.name }}</span>
                 <span class="select-meta">{{ activeProject.category }}</span>
               </span>
               <span v-else class="select-placeholder">Select project or category...</span>
-              <i class="ti" :class="projectMenuOpen ? 'ti-chevron-up' : 'ti-chevron-down'" aria-hidden="true"></i>
+              <i class="ti ti-chevron-down" aria-hidden="true"></i>
             </button>
-            <div v-if="projectMenuOpen" class="select-menu">
-              <div v-for="group in projectGroups" :key="group.label" class="select-group">
-                <div class="select-group-label">{{ group.label }}</div>
-                <button
-                  v-for="project in group.items"
-                  :key="project.id"
-                  class="select-item"
-                  type="button"
-                  @click="selectProject(project.id)"
-                >
-                  <span class="color-dot" :class="'dot-' + project.color"></span>
-                  <span>{{ project.name }}</span>
-                </button>
+            <TfModal :isOpen="projectMenuOpen" title="Select Project" @close="projectMenuOpen = false">
+              <div class="modal-list">
+                <div v-for="group in projectGroups" :key="group.label" class="modal-group">
+                  <div class="modal-group-label">{{ group.label }}</div>
+                  <button
+                    v-for="project in group.items"
+                    :key="project.id"
+                    class="modal-list-item"
+                    type="button"
+                    @click="selectProject(project.id); projectMenuOpen = false"
+                  >
+                    <span class="color-dot" :class="'dot-' + project.color"></span>
+                    <span>{{ project.name }}</span>
+                  </button>
+                </div>
+                <a href="/projects" class="modal-new-btn">New project</a>
               </div>
-              <a href="/projects" class="select-new" style="display: block; text-align: center; text-decoration: none;">New project</a>
-            </div>
+            </TfModal>
           </div>
 
           <div v-if="mainCategory === 'Activity'" class="tf-card select-card" style="margin-top: 16px;">
@@ -425,10 +447,12 @@ onUnmounted(() => { stopTicking(); });
           <div class="tf-card timer-card">
             <div class="status-label" :class="{ running: isRunning }">{{ statusLabel }}</div>
             <div class="timer-display">{{ timerDisplay }}</div>
-            <button class="primary-btn" :class="{ danger: isRunning }" type="button" @click="toggleTimer">
-              <i class="ti" :class="isRunning ? 'ti-square' : 'ti-player-play'" aria-hidden="true"></i>
-              {{ startStopLabel }}
-            </button>
+            <div class="fab-container">
+              <button class="fab-btn" :class="{ danger: isRunning }" type="button" @click="toggleTimer">
+                <i class="ti" :class="isRunning ? 'ti-square' : 'ti-player-play'" aria-hidden="true"></i>
+              </button>
+              <div class="fab-label">{{ startStopLabel }}</div>
+            </div>
             <div v-if="activeProject" class="field">
               <input class="text-input" type="text" placeholder="Add a label (optional)..." v-model="sessionLabel" />
             </div>
@@ -728,6 +752,46 @@ onUnmounted(() => { stopTicking(); });
   background: var(--tf-red);
 }
 
+.fab-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.fab-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: none;
+  background: var(--tf-violet);
+  color: #fff;
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(124, 92, 252, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fab-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 4px 12px rgba(124, 92, 252, 0.4);
+}
+
+.fab-btn.danger {
+  background: var(--tf-red);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+}
+
+.fab-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tf-text-secondary);
+}
+
 .secondary-btn {
   height: 42px;
   border-radius: 10px;
@@ -776,6 +840,72 @@ onUnmounted(() => { stopTicking(); });
   background: var(--tf-bg-card-alt);
   font-size: 13px;
   color: var(--tf-text-primary);
+}
+
+.modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.modal-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--tf-text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.modal-list-item:hover {
+  background: var(--tf-bg-hover);
+}
+
+.modal-group-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--tf-text-hint);
+  padding: 10px 15px 5px;
+}
+
+.modal-new-btn {
+  display: block;
+  text-align: center;
+  padding: 12px;
+  margin-top: 10px;
+  border-top: 1px solid var(--tf-border-default);
+  color: #5b3fd4;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .timer-card .primary-btn {
+    position: fixed;
+    bottom: calc(85px + env(safe-area-inset-bottom));
+    right: 20px;
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    font-size: 0;
+    box-shadow: 0 5px 25px rgba(124, 92, 252, 0.5);
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .timer-card .primary-btn i {
+    font-size: 28px;
+    margin: 0;
+  }
 }
 
 .notes-input {

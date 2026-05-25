@@ -663,8 +663,8 @@ function heatmapLevel(totalSeconds) {
 }
 
 .nav-btn {
-  width: 35px;
-  height: 35px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   border: 1px solid var(--tf-border-default);
   background: var(--tf-bg-card-alt);
@@ -679,6 +679,13 @@ function heatmapLevel(totalSeconds) {
   background: var(--tf-bg-card-alt);
   border-radius: 1249px;
   margin-top: 15px;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.tab-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-pill {

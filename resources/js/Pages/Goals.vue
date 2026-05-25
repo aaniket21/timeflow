@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
-import ModalBase from '../Components/ModalBase.vue';
+import TfModal from '../Components/TfModal.vue';
 import { useTime } from '../composables/useTime';
 
 const { daysUntil, formatDate } = useTime();
@@ -168,7 +168,7 @@ const deleteExam = async (id) => {
         <div v-else class="empty-state">No upcoming exams.</div>
       </div>
 
-      <ModalBase :open="showGoalModal" title="Create Goal" @close="showGoalModal = false">
+      <TfModal :isOpen="showGoalModal" title="Create Goal" @close="showGoalModal = false">
         <div class="field">
           <label class="field-label">Goal title</label>
           <input class="text-input" type="text" v-model="goalForm.title" placeholder="e.g. Study 6h daily" />
@@ -189,9 +189,9 @@ const deleteExam = async (id) => {
           <button class="outline-btn" type="button" @click="showGoalModal = false">Cancel</button>
           <button class="primary-btn" type="button" @click="createGoal">Create</button>
         </template>
-      </ModalBase>
+      </TfModal>
 
-      <ModalBase :open="showExamModal" title="Add Exam" @close="showExamModal = false">
+      <TfModal :isOpen="showExamModal" title="Add Exam" @close="showExamModal = false">
         <div class="field">
           <label class="field-label">Subject</label>
           <input class="text-input" type="text" v-model="examForm.subject" placeholder="e.g. Mathematics" />
@@ -204,7 +204,7 @@ const deleteExam = async (id) => {
           <button class="outline-btn" type="button" @click="showExamModal = false">Cancel</button>
           <button class="primary-btn" type="button" @click="createExam">Add</button>
         </template>
-      </ModalBase>
+      </TfModal>
     </AppShell>
   </div>
 </template>

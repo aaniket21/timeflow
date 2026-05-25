@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
-import ModalBase from '../Components/ModalBase.vue';
+import TfModal from '../Components/TfModal.vue';
 import { useTime } from '../composables/useTime';
 
 const { formatDate } = useTime();
@@ -130,7 +130,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <ModalBase :open="showGenerateModal" title="Generate Report" @close="showGenerateModal = false">
+      <TfModal :isOpen="showGenerateModal" title="Generate Report" @close="showGenerateModal = false">
         <div class="field">
           <label class="field-label">Report title</label>
           <input class="text-input" type="text" v-model="reportForm.title" placeholder="e.g. Weekly Summary" />
@@ -147,7 +147,7 @@ onMounted(() => {
           <button class="outline-btn" type="button" @click="showGenerateModal = false">Cancel</button>
           <button class="primary-btn" type="button" @click="generateReport">Generate</button>
         </template>
-      </ModalBase>
+      </TfModal>
     </AppShell>
   </div>
 </template>

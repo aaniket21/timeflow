@@ -12,9 +12,7 @@ class AppShellLayoutTest extends TestCase
 
         $this->assertNotFalse($vue);
         $this->assertStringContainsString('tf-shell', $vue);
-        $this->assertStringContainsString('tf-topbar', $vue);
         $this->assertStringContainsString('tf-sidebar', $vue);
-        $this->assertStringContainsString('TimeFlow', $vue);
     }
 
     public function test_shared_layout_classes_defined(): void

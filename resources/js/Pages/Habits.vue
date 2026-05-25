@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
-import ModalBase from '../Components/ModalBase.vue';
+import TfModal from '../Components/TfModal.vue';
 import { useTime } from '../composables/useTime';
 
 const time = useTime();
@@ -219,7 +219,7 @@ const createHabit = async () => {
         <div class="insight">Check back after 7 days for habit insights.</div>
       </div>
 
-      <ModalBase :open="showHabitModal" :title="habitForm.id ? 'Edit Habit' : 'Add Habit'" @close="showHabitModal = false">
+      <TfModal :isOpen="showHabitModal" :title="habitForm.id ? 'Edit Habit' : 'Add Habit'" @close="showHabitModal = false">
         <div class="field">
           <label class="field-label">Habit name</label>
           <input class="text-input" type="text" v-model="habitForm.title" placeholder="e.g. Read 30 min" />
@@ -236,7 +236,7 @@ const createHabit = async () => {
           <button class="outline-btn" type="button" @click="showHabitModal = false">Cancel</button>
           <button class="primary-btn" type="button" @click="createHabit">{{ habitForm.id ? 'Save' : 'Add' }}</button>
         </template>
-      </ModalBase>
+      </TfModal>
     </AppShell>
   </div>
 </template>
@@ -342,10 +342,18 @@ const createHabit = async () => {
   font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
-.day-cell,
+.day-cell {
+  display: flex;
+  justify-content: center;
+}
+
 .check-cell {
   display: flex;
   justify-content: center;
+  align-items: center;
+  height: 48px;
+  min-width: 48px;
+  cursor: pointer;
 }
 
 .check-box {
