@@ -5,6 +5,7 @@ import { onMounted, ref, computed } from 'vue';
 import { useTime } from '../composables/useTime';
 import TopBar from '../Components/TopBar.vue';
 import BottomNav from '../Components/BottomNav.vue';
+import TfModal from '../Components/TfModal.vue';
 
 const { dayOfWeekIndex, formatTime } = useTime();
 
@@ -103,8 +104,43 @@ const handleLogout = async () => {
   }
 };
 
+const deferredPrompt = ref(null);
+const showInstallPrompt = ref(false);
+
+const handleInstall = async () => {
+  if (deferredPrompt.value) {
+    deferredPrompt.value.prompt();
+    const { outcome } = await deferredPrompt.value.userChoice;
+    if (outcome === 'accepted') {
+      showInstallPrompt.value = false;
+      localStorage.setItem('tf_pwa_installed', 'true');
+    }
+    deferredPrompt.value = null;
+  }
+};
+
+const dismissInstall = () => {
+  showInstallPrompt.value = false;
+  localStorage.setItem('tf_pwa_dismissed', 'true');
+};
+
 onMounted(() => {
   loadShellData();
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt.value = e;
+    
+    if (localStorage.getItem('tf_pwa_installed') === 'true' || localStorage.getItem('tf_pwa_dismissed') === 'true') return;
+
+    let visits = Number(localStorage.getItem('tf_visits') || 0);
+    visits++;
+    localStorage.setItem('tf_visits', visits.toString());
+
+    if (visits >= 3) {
+      showInstallPrompt.value = true;
+    }
+  });
 });
 </script>
 
@@ -165,5 +201,17 @@ onMounted(() => {
       :routeMap="getRoute"
       :liveTimer="true" 
     />
+
+    <TfModal :isOpen="showInstallPrompt" title="Install TimeFlow" @close="dismissInstall">
+      <div style="text-align:center; padding: 20px 0;">
+        <div style="font-size: 48px; margin-bottom: 15px;">📲</div>
+        <h3 style="margin: 0 0 10px; font-weight: 700; color: var(--tf-text-primary);">Get the full experience</h3>
+        <p style="color: var(--tf-text-secondary); font-size: 14px; margin: 0 0 20px; line-height: 1.5;">
+          Install TimeFlow on your home screen for quick access, offline mode, and daily reminders.
+        </p>
+        <button class="primary-btn" style="width: 100%; margin-bottom: 10px; height: 44px; border-radius: 12px; background: var(--tf-violet); color: #fff; font-weight: 600; border: none; cursor: pointer;" type="button" @click="handleInstall">Install App</button>
+        <button class="outline-btn" style="width: 100%; height: 44px; border-radius: 12px; background: transparent; border: 1px solid var(--tf-border-default); color: var(--tf-text-secondary); font-weight: 600; cursor: pointer;" type="button" @click="dismissInstall">Maybe Later</button>
+      </div>
+    </TfModal>
   </div>
 </template>

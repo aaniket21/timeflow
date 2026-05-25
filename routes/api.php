@@ -77,3 +77,8 @@ Route::middleware(['auth:sanctum', SetUserTimezone::class])->group(function () {
     Route::get('/settings/export', [SettingsController::class, 'exportData']);
     Route::delete('/settings/account', [SettingsController::class, 'deleteAccount']);
 });
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/push-subscriptions', [App\Http\Controllers\PushSubscriptionController::class, 'update']);
+    Route::delete('/push-subscriptions', [App\Http\Controllers\PushSubscriptionController::class, 'destroy']);
+});

@@ -13,6 +13,7 @@ class DailyChallengeCompletionTest extends TestCase
 {
     public function test_hours_logged_challenge_completes_and_awards_xp(): void
     {
+        DailyChallenge::query()->delete();
         $challenge = DailyChallenge::firstOrCreate(
             ['slug' => 'log-1-hour'],
             [
@@ -24,7 +25,7 @@ class DailyChallengeCompletionTest extends TestCase
             ]
         );
 
-        $user = User::factory()->create();
+        $user = User::factory()->create(['timezone' => 'UTC']);
         $user->forceFill([
             'last_active_date' => \App\Helpers\TimeHelper::todayForUser($user),
             'streak_current' => 1,

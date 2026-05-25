@@ -15,3 +15,6 @@ Artisan::command('timeflow:send-weekly-digest', function () {
 
 // PRD §6 — Nightly streak recalculation at 01:00 UTC
 Schedule::command('timeflow:check-streaks')->dailyAt('01:00')->withoutOverlapping();
+
+// P4.7 - Send push notifications for streak risk at 8 PM user's timezone
+Schedule::command('timeflow:streak-risk')->hourly()->withoutOverlapping();

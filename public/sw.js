@@ -1,74 +1,69 @@
-const CACHE_NAME = 'timeflow-shell-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/manifest.json',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg',
-  '/icons/icon-maskable.svg',
-];
+importScripts('https://storage.googleapis.com/workbox-cdn/releases/6.5.4/workbox-sw.js');
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+if (workbox) {
+  console.log('Workbox is loaded');
+  workbox.core.skipWaiting();
+  workbox.core.clientsClaim();
+
+  // Precaching the offline page
+  workbox.precaching.precacheAndRoute([
+    { url: '/offline.html', revision: '1' }
+  ]);
+
+  // Cache static assets (CSS, JS, Fonts)
+  workbox.routing.registerRoute(
+    ({ request }) => ['style', 'script', 'font'].includes(request.destination),
+    new workbox.strategies.CacheFirst({
+      cacheName: 'timeflow-assets',
+    })
   );
-  self.skipWaiting();
-});
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
-    )
+  // Cache images
+  workbox.routing.registerRoute(
+    ({ request }) => request.destination === 'image',
+    new workbox.strategies.CacheFirst({
+      cacheName: 'timeflow-images',
+    })
   );
-  self.clients.claim();
-});
 
-const cacheFirst = async (request) => {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-  const response = await fetch(request);
-  cache.put(request, response.clone());
-  return response;
-};
+  // API Requests - Network First
+  workbox.routing.registerRoute(
+    ({ url }) => url.pathname.startsWith('/api/'),
+    new workbox.strategies.NetworkFirst({
+      cacheName: 'timeflow-api',
+      networkTimeoutSeconds: 3,
+    })
+  );
 
-const networkFirst = async (request) => {
-  const cache = await caches.open(CACHE_NAME);
-  try {
-    const response = await fetch(request);
-    cache.put(request, response.clone());
-    return response;
-  } catch (error) {
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    throw error;
-  }
-};
+  // Navigation Requests - Network First
+  workbox.routing.registerRoute(
+    ({ request }) => request.mode === 'navigate',
+    new workbox.strategies.NetworkFirst({
+      cacheName: 'timeflow-pages',
+    })
+  );
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  // Background Sync for POST requests (Timer stop and Habit toggle)
+  const bgSyncPlugin = new workbox.backgroundSync.BackgroundSyncPlugin('timeflow-bg-sync', {
+    maxRetentionTime: 24 * 60 // Retry for max of 24 Hours
+  });
 
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
+  workbox.routing.registerRoute(
+    ({ url, request }) => request.method === 'POST' && (url.pathname.includes('/sessions') || url.pathname.includes('/goals')),
+    new workbox.strategies.NetworkOnly({
+      plugins: [bgSyncPlugin]
+    }),
+    'POST'
+  );
 
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(event.request));
-    return;
-  }
-
-  if (event.request.mode === 'navigate') {
-    event.respondWith(networkFirst(event.request));
-    return;
-  }
-
-  const destination = event.request.destination;
-  if (['style', 'script', 'image', 'font'].includes(destination)) {
-    event.respondWith(cacheFirst(event.request));
-    return;
-  }
-
-  event.respondWith(networkFirst(event.request));
-});
+  // Custom offline fallback page (P4.6)
+  workbox.routing.setCatchHandler(async ({ event }) => {
+    if (event.request.mode === 'navigate') {
+      return caches.match('/offline.html');
+    }
+    return Response.error();
+  });
+}
 
 self.addEventListener('message', (event) => {
   const payload = event.data || {};

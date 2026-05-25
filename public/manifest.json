@@ -6,6 +6,22 @@
   "display": "standalone",
   "background_color": "#0A0A0F",
   "theme_color": "#0A0A0F",
+  "shortcuts": [
+    {
+      "name": "Start Timer",
+      "short_name": "Timer",
+      "description": "Start a new focus session",
+      "url": "/timer",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Check Habits",
+      "short_name": "Habits",
+      "description": "Log your daily habits",
+      "url": "/habits",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.svg",

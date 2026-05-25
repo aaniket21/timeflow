@@ -21,6 +21,7 @@
     <script>
         window.__APP_TIMEZONE = @json(auth()->user()?->timezone ?? 'UTC');
         window.__APP_USER_ID = @json(auth()->user()?->id);
+        window.__VAPID_PUBLIC_KEY = @json(config('webpush.vapid.public_key'));
     </script>
 
     <!-- Dark mode init: prevents flash of wrong theme (DESIGN.md §10) -->

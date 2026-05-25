@@ -96,9 +96,48 @@ const saveProfile = async () => {
   }
 };
 
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
+
 const saveNotifications = async () => {
   try {
     await axios.put('/api/settings/notifications', notificationsForm.value);
+    
+    if (notificationsForm.value.notifications_enabled && 'serviceWorker' in navigator && 'PushManager' in window) {
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+      
+      if (!subscription && window.__VAPID_PUBLIC_KEY) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(window.__VAPID_PUBLIC_KEY)
+        });
+      }
+
+      if (subscription) {
+        await axios.post('/api/push-subscriptions', subscription.toJSON());
+      }
+    } else if (!notificationsForm.value.notifications_enabled && 'serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        await subscription.unsubscribe();
+        await axios.delete('/api/push-subscriptions', { data: { endpoint: subscription.endpoint } });
+      }
+    }
+
     if (window.TimeflowToast) window.TimeflowToast.success('Notification preferences saved');
   } catch (error) {
     if (window.TimeflowToast) window.TimeflowToast.error('Failed to save notifications');

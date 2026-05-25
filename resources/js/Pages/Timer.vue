@@ -4,8 +4,10 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import AppShell from '../Layouts/AppShell.vue';
 import TfModal from '../Components/TfModal.vue';
 import { useTime } from '../composables/useTime';
+import { useTimer } from '../composables/useTimer';
 
 const { format, formatTime, sessionGroupLabel, toTimestamp, dayjs } = useTime();
+const { saveState, loadState, clearState } = useTimer();
 
 const props = defineProps({
   navigation: {
@@ -176,7 +178,19 @@ const startSession = async () => {
     if (window.TimeflowToast) window.TimeflowToast.success('Session started');
   } catch (e) {
     console.warn('Start session API failed (timer running locally)', e);
+    // Offline mode: generate a temporary ID if failed
+    if (!activeSessionId.value) activeSessionId.value = 'offline_' + Date.now();
   }
+
+  // Save to IndexedDB
+  await saveState({
+    activeSessionId: activeSessionId.value,
+    selectedProjectId: selectedProjectId.value,
+    mainCategory: mainCategory.value,
+    sessionLabel: sessionLabel.value,
+    mode: mode.value,
+    startedAt: Date.now()
+  });
 };
 
 const stopSession = async () => {
@@ -190,11 +204,13 @@ const stopSession = async () => {
       localStorage.removeItem(`tf_notes_${activeSessionId.value}`);
     } catch (e) {
       console.warn('Stop session failed', e);
+      if (window.TimeflowToast) window.TimeflowToast.info('Offline: Session saved, will sync later');
     }
   }
   activeSessionId.value = null;
   timerSeconds.value = 0;
   sessionNotes.value = '';
+  await clearState();
   loadSessionLog(true);
 };
 
@@ -208,37 +224,54 @@ const loadActiveSession = async () => {
     const res = await axios.get('/api/sessions/active');
     const session = res.data?.data?.session;
     if (session) {
-      activeSessionId.value = session.id;
-      selectedProjectId.value = session.project_id || '';
-      sessionLabel.value = session.label || '';
-      mode.value = session.type || 'timer';
-      
-      if (session.label === 'focus-untitled' || session.type === 'pomodoro') {
-        mainCategory.value = 'Focus Mode';
-      } else if (session.project_id || session.label === 'project-untitled') {
-        mainCategory.value = 'Project';
-      } else if (session.label && session.label.startsWith('activity-')) {
-        mainCategory.value = 'Activity';
-        const name = session.label.replace('activity-', '');
-        activityTitle.value = name === 'untitled' ? '' : name;
-      } else if (session.label && session.label.startsWith('other-')) {
-        mainCategory.value = 'Other';
-        const name = session.label.replace('other-', '');
-        otherTitle.value = name === 'untitled' ? '' : name;
-      } else {
-        mainCategory.value = 'Project';
-      }
-
-      sessionNotes.value = session.notes || '';
-
-      const startedAt = toTimestamp(session.started_at);
-      timerSeconds.value = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-      isRunning.value = true;
-      startTicking();
+      await restoreSessionFromData(session, toTimestamp(session.started_at));
+      return;
     }
   } catch (e) {
-    console.warn('Load active session failed', e);
+    console.warn('Load active session API failed', e);
   }
+
+  // Fallback to IndexedDB (offline mode)
+  const offlineState = await loadState();
+  if (offlineState && offlineState.activeSessionId) {
+    console.log('Restored offline session state');
+    await restoreSessionFromData({
+      id: offlineState.activeSessionId,
+      project_id: offlineState.selectedProjectId,
+      label: offlineState.sessionLabel,
+      type: offlineState.mode
+    }, offlineState.startedAt);
+    mainCategory.value = offlineState.mainCategory || 'Project';
+  }
+};
+
+const restoreSessionFromData = async (session, startedAtTimestamp) => {
+  activeSessionId.value = session.id;
+  selectedProjectId.value = session.project_id || '';
+  sessionLabel.value = session.label || '';
+  mode.value = session.type || 'timer';
+  
+  if (session.label === 'focus-untitled' || session.type === 'pomodoro') {
+    mainCategory.value = 'Focus Mode';
+  } else if (session.project_id || session.label === 'project-untitled') {
+    mainCategory.value = 'Project';
+  } else if (session.label && session.label.startsWith('activity-')) {
+    mainCategory.value = 'Activity';
+    const name = session.label.replace('activity-', '');
+    activityTitle.value = name === 'untitled' ? '' : name;
+  } else if (session.label && session.label.startsWith('other-')) {
+    mainCategory.value = 'Other';
+    const name = session.label.replace('other-', '');
+    otherTitle.value = name === 'untitled' ? '' : name;
+  } else {
+    mainCategory.value = 'Project';
+  }
+
+  sessionNotes.value = localStorage.getItem(`tf_notes_${session.id}`) || session.notes || '';
+
+  timerSeconds.value = Math.max(0, Math.floor((Date.now() - startedAtTimestamp) / 1000));
+  isRunning.value = true;
+  startTicking();
 };
 
 const startTicking = () => {
